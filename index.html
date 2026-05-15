@@ -731,7 +731,7 @@ function renderTable(){
   document.querySelectorAll("#projectTbody tr").forEach(tr=>tr.addEventListener("click",()=>openDetail(+tr.dataset.id)));
 }
 
-["freeSearch","filterSubBrand","filterTMSPOC","filterBrandSPOC","filterZone","filterStatus","filterDept","filterEdits"].forEach(id=>
+["freeSearch","filterElement","filterSubBrand","filterTMSPOC","filterBrandSPOC","filterZone","filterStatus","filterDept","filterEdits"].forEach(id=>
   document.getElementById(id).addEventListener("input",renderTable)
 );
 
