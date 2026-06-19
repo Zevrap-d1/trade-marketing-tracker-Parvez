@@ -1,1 +1,1391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AWL Trade Marketing Tracker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0f1117;--surface:#181c27;--surface2:#1e2336;--surface3:#252b40;
+  --border:#2d3454;--border2:#394168;--text:#e8ecf7;--text2:#8b95b8;--text3:#5a638a;
+  --accent:#5b8def;--green:#2ecc8a;--yellow:#f5c242;--orange:#f5894a;
+  --red:#f05252;--purple:#9b72e8;--teal:#38c4c4;--pink:#e86fa8;--navy:#4a7ab5;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px}
+.app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+
+/* TOPBAR */
+.topbar{display:flex;align-items:center;gap:14px;padding:0 18px;height:52px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}
+.logo{font-size:16px;font-weight:700;letter-spacing:-.3px;white-space:nowrap}
+.logo span{color:var(--accent)}
+.tab-nav{display:flex;gap:2px;margin-left:auto}
+.tab-btn{padding:5px 13px;border-radius:6px;border:none;background:transparent;color:var(--text2);cursor:pointer;font-family:inherit;font-size:13px;font-weight:500;transition:all .15s}
+.tab-btn:hover{background:var(--surface2);color:var(--text)}
+.tab-btn.active{background:var(--accent);color:#fff}
+.topbar-actions{display:flex;gap:7px;margin-left:10px}
+.new-btn{padding:5px 13px;background:var(--green);color:#0f1117;border:none;border-radius:6px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;transition:opacity .15s}
+.new-btn:hover{opacity:.85}
+.bulk-btn{padding:5px 13px;background:#0e2a1a;color:var(--green);border:1px solid var(--green);border-radius:6px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .15s}
+.bulk-btn:hover{background:var(--green);color:#0f1117}
+.export-btn{padding:5px 13px;background:var(--surface2);color:var(--text2);border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .15s}
+.export-btn:hover{background:var(--surface3);color:var(--text)}
+
+.main{flex:1;overflow:hidden;display:flex;flex-direction:column}
+.tab-pane{display:none;flex:1;overflow:hidden;flex-direction:column}
+.tab-pane.active{display:flex}
+
+/* SHARED FILTER BAR */
+.filter-bar{display:flex;gap:6px;padding:9px 16px;background:var(--surface);border-bottom:1px solid var(--border);flex-wrap:wrap;align-items:center;flex-shrink:0}
+.filter-bar input,.filter-bar select{background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 9px;font-family:inherit;font-size:12px;outline:none;transition:border-color .15s}
+.filter-bar input:focus,.filter-bar select:focus{border-color:var(--accent)}
+.filter-bar input[type=text]{min-width:160px}
+.filter-bar select{min-width:112px}
+.filter-bar select option{background:var(--surface2)}
+.filter-count{color:var(--text3);font-size:11px;font-family:'DM Mono',monospace;white-space:nowrap}
+.reset-btn{padding:5px 12px;background:#0e2a3a;color:var(--teal);border:1px solid var(--teal);border-radius:6px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .15s;letter-spacing:.3px}
+.reset-btn:hover{background:var(--teal);color:#0f1117}
+.group-update-btn{padding:5px 12px;background:#2e1e10;color:var(--orange);border:1px solid var(--orange);border-radius:6px;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .15s;display:none}
+.group-update-btn:hover{background:var(--orange);color:#0f1117}
+.filter-active-badge{background:var(--accent);color:#fff;border-radius:4px;padding:2px 7px;font-size:11px;font-weight:600;white-space:nowrap;display:none}
+
+/* TABLE */
+.table-wrap{flex:1;overflow:auto}
+table{width:100%;border-collapse:collapse}
+thead th{position:sticky;top:0;background:var(--surface2);color:var(--text2);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.55px;padding:8px 9px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;z-index:2}
+tbody tr{border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s}
+tbody tr:hover{background:var(--surface2)}
+tbody tr.row-overdue{background:rgba(240,82,82,0.05)}
+tbody tr.row-overdue:hover{background:rgba(240,82,82,0.1)}
+tbody tr.row-warn{background:rgba(155,114,232,0.04)}
+tbody td{padding:7px 9px;color:var(--text);vertical-align:top;font-size:12px}
+td.mono{font-family:'DM Mono',monospace;font-size:11px;color:var(--text2)}
+td.update-cell{max-width:190px}
+.update-note{font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;display:block}
+.update-date{font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:1px}
+.no-update{font-size:11px;color:var(--text3);font-style:italic}
+.exec-link{font-size:11px;color:var(--accent);text-decoration:none}
+.exec-link:hover{text-decoration:underline}
+
+/* BADGES */
+.badge{display:inline-block;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:600;white-space:nowrap}
+.badge-Completed {background:#0e3527;color:var(--green)}
+.badge-GRN       {background:#0d2e2e;color:var(--teal)}
+.badge-Dispatched{background:#0d1f36;color:var(--navy)}
+.badge-Execution {background:#0e1f40;color:var(--accent)}
+.badge-PO        {background:#2e2510;color:var(--yellow)}
+.badge-Creative  {background:#1e1235;color:var(--purple)}
+.badge-Blocked   {background:#2e1212;color:var(--red)}
+.badge-Planned   {background:#181c27;color:var(--text3);border:1px solid var(--border)}
+.badge-Postponed {background:#2e1e10;color:var(--orange)}
+.badge-Misc      {background:#2a1228;color:var(--pink)}
+.badge-cr-Approved{background:#0e3527;color:var(--green)}
+.badge-cr-Pending {background:#2e2510;color:var(--yellow)}
+.badge-cr-Review  {background:#1e1235;color:var(--purple)}
+.badge-cr-NA      {background:var(--surface2);color:var(--text3)}
+
+/* MODALS */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:100;align-items:center;justify-content:center}
+.overlay.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:13px;width:960px;max-width:96vw;max-height:92vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+.modal-head{display:flex;align-items:center;padding:13px 18px;border-bottom:1px solid var(--border);gap:9px;flex-shrink:0}
+.modal-head h2{font-size:15px;font-weight:700;flex:1}
+.modal-close{background:var(--surface3);border:none;color:var(--text2);width:26px;height:26px;border-radius:5px;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center}
+.modal-close:hover{background:var(--border);color:var(--text)}
+.modal-body{flex:1;overflow-y:auto;padding:16px 18px}
+
+/* FORM */
+.form-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px 15px}
+.field{display:flex;flex-direction:column;gap:4px}
+.field.span2{grid-column:span 2}
+.field.span3{grid-column:span 3}
+.field label{font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.6px}
+.field input,.field select,.field textarea{background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:7px 10px;font-family:inherit;font-size:13px;outline:none;transition:border-color .15s}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent)}
+.field textarea{resize:vertical;min-height:55px}
+.field select option{background:var(--surface)}
+.field input[readonly]{opacity:.5;cursor:default}
+.form-sep{grid-column:1/-1;height:1px;background:var(--border);margin:2px 0}
+.form-section-title{grid-column:1/-1;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.9px;padding-top:4px}
+.modal-foot{padding:11px 18px;border-top:1px solid var(--border);display:flex;gap:7px;justify-content:flex-end;align-items:center;flex-shrink:0}
+.btn{padding:7px 15px;border-radius:7px;border:none;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:opacity .15s}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{opacity:.85}
+.btn-green{background:var(--green);color:#0f1117}
+.btn-green:hover{opacity:.85}
+.btn-ghost{background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
+.btn-ghost:hover{background:var(--surface3);color:var(--text)}
+
+/* BULK ENTRY */
+.bulk-locations-table{width:100%;border-collapse:collapse;margin-top:10px}
+.bulk-locations-table th{background:var(--surface2);color:var(--text2);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;padding:7px 8px;text-align:left;border-bottom:1px solid var(--border)}
+.bulk-locations-table td{padding:5px 5px;border-bottom:1px solid var(--border);vertical-align:top}
+.bulk-locations-table input,.bulk-locations-table select{background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:5px 7px;font-family:inherit;font-size:12px;outline:none;width:100%;transition:border-color .15s}
+.bulk-locations-table input:focus,.bulk-locations-table select:focus{border-color:var(--accent)}
+.bulk-locations-table select option{background:var(--surface)}
+.remove-row-btn{background:transparent;border:none;color:var(--text3);cursor:pointer;font-size:15px;padding:3px 6px;border-radius:4px;transition:all .15s;line-height:1}
+.remove-row-btn:hover{background:#2e1212;color:var(--red)}
+.add-row-btn{padding:6px 14px;background:var(--surface2);color:var(--accent);border:1px solid var(--accent);border-radius:6px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;margin-top:10px;transition:all .15s}
+.add-row-btn:hover{background:var(--accent);color:#fff}
+.bulk-summary{font-size:12px;color:var(--text2);margin-left:8px}
+.dup-row{background:rgba(240,82,82,0.08)!important}
+.dup-badge{font-size:9px;background:#2e1212;color:var(--red);border-radius:3px;padding:1px 4px;margin-left:4px}
+
+/* GROUP UPDATE MODAL */
+.group-update-modal{width:600px}
+.group-update-list{max-height:200px;overflow-y:auto;margin-bottom:14px;border:1px solid var(--border);border-radius:7px}
+.group-update-list-item{padding:8px 12px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text2)}
+.group-update-list-item:last-child{border-bottom:none}
+.group-update-list-item strong{color:var(--text)}
+
+/* WARN BOXES */
+.creative-warn{padding:8px 11px;background:#1e1235;border:1px solid var(--purple);border-radius:7px;color:var(--purple);font-size:12px;display:none;margin-bottom:10px}
+.dup-warn{padding:8px 11px;background:#2e1212;border:1px solid var(--red);border-radius:7px;color:var(--red);font-size:12px;display:none;margin-bottom:10px}
+
+/* DETAIL MODAL */
+.detail-modal{width:760px}
+.meta-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:10px}
+.meta-chip{display:flex;flex-direction:column;gap:2px}
+.meta-chip .mc-label{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.6px}
+.meta-chip .mc-value{font-size:13px;color:var(--text2);font-weight:500}
+.detail-section-title{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin:15px 0 8px}
+
+/* TIMELINE */
+.timeline-wrap{display:flex;flex-direction:column}
+.timeline-item{display:flex;gap:11px;padding:9px 0;border-bottom:1px solid var(--border)}
+.timeline-item:last-child{border-bottom:none}
+.tl-left{display:flex;flex-direction:column;align-items:center;width:26px;flex-shrink:0}
+.tl-dot{width:9px;height:9px;border-radius:50%;background:var(--accent);flex-shrink:0;margin-top:2px}
+.tl-dot.green{background:var(--green)}.tl-dot.red{background:var(--red)}
+.tl-dot.yellow{background:var(--yellow)}.tl-dot.grey{background:var(--text3)}
+.tl-line{flex:1;width:1px;background:var(--border);margin-top:4px;min-height:12px}
+.timeline-item:last-child .tl-line{display:none}
+.tl-body{flex:1}
+.latest-pill{font-size:9px;background:var(--accent);color:#fff;border-radius:3px;padding:1px 5px;margin-bottom:3px;display:inline-block}
+
+.add-update{margin-top:13px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:11px}
+.add-update-title{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:7px}
+.add-update textarea{width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px 9px;font-family:inherit;font-size:13px;resize:none;outline:none;height:60px;margin-bottom:7px}
+.add-update textarea:focus{border-color:var(--accent)}
+.add-update select{background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 9px;font-family:inherit;font-size:13px;outline:none;width:100%;margin-bottom:7px}
+.add-update select:focus{border-color:var(--accent)}
+.add-update select option{background:var(--surface)}
+.add-update-foot{display:flex;justify-content:flex-end}
+
+/* TYPEAHEAD */
+.typeahead-wrap{position:relative}
+.typeahead-dd{position:absolute;top:calc(100% + 3px);left:0;right:0;background:var(--surface);border:1px solid var(--border2);border-radius:7px;z-index:200;max-height:150px;overflow-y:auto;box-shadow:0 8px 26px rgba(0,0,0,.4);display:none}
+.typeahead-dd.open{display:block}
+.ta-item{padding:7px 11px;cursor:pointer;font-size:13px;color:var(--text2)}
+.ta-item:hover{background:var(--surface3);color:var(--text)}
+
+/* DASHBOARD */
+.dashboard-body{flex:1;overflow-y:auto;padding:16px 18px}
+.dash-filter-info{display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:9px 13px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:12px;color:var(--text2);flex-wrap:wrap}
+.dash-filter-info .dfi-label{font-weight:600;color:var(--text)}
+.dash-filter-info .dfi-tag{background:var(--surface2);border:1px solid var(--border2);border-radius:4px;padding:2px 8px;font-size:11px;color:var(--accent)}
+.metrics-row{display:grid;grid-template-columns:repeat(5,1fr);gap:11px;margin-bottom:16px}
+.metric-card{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:14px 15px;cursor:pointer;transition:border-color .15s}
+.metric-card:hover{border-color:var(--accent)}
+.metric-card .mc-label{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px}
+.metric-card .mc-value{font-size:24px;font-weight:700;line-height:1}
+.metric-card .mc-sub{font-size:11px;color:var(--text2);margin-top:3px}
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:11px}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:15px 17px}
+.chart-card h3{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:13px}
+.status-bars{display:flex;flex-direction:column;gap:7px}
+.status-row{display:flex;align-items:center;gap:7px;border-radius:4px;padding:2px 3px;cursor:pointer;transition:background .1s}
+.status-row:hover{background:var(--surface3)}
+.status-row .sr-label{font-size:11px;color:var(--text2);width:175px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.status-row .sr-bar-bg{flex:1;background:var(--surface2);border-radius:3px;height:13px;overflow:hidden}
+.status-row .sr-bar{height:100%;border-radius:3px;transition:width .5s}
+.status-row .sr-count{font-size:11px;font-family:'DM Mono',monospace;color:var(--text2);width:18px;text-align:right;flex-shrink:0}
+.trend-svg{width:100%;height:158px}
+
+/* ALERTS */
+.alerts-body{flex:1;overflow-y:auto;padding:16px 18px}
+.alert-metrics-row{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin-bottom:20px}
+.alert-metric-card{border-radius:11px;padding:16px;cursor:pointer;transition:all .2s;border:2px solid transparent}
+.alert-metric-card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.3)}
+.alert-metric-card.active{border-color:rgba(255,255,255,.3)}
+.alert-metric-card .amc-icon{font-size:20px;margin-bottom:7px}
+.alert-metric-card .amc-count{font-size:30px;font-weight:700;line-height:1;margin-bottom:3px}
+.alert-metric-card .amc-label{font-size:12px;font-weight:600;opacity:.9}
+.alert-metric-card .amc-sub{font-size:11px;opacity:.7;margin-top:3px}
+.alert-metric-card .amc-hint{font-size:10px;opacity:.5;margin-top:5px}
+.alert-section{display:none}
+.alert-section.visible{display:block}
+.alert-section-header{display:flex;align-items:center;gap:10px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.alert-section-header h3{font-size:14px;font-weight:700;flex:1}
+.close-section{background:var(--surface2);border:none;color:var(--text2);padding:4px 10px;border-radius:5px;cursor:pointer;font-family:inherit;font-size:12px}
+.jump-btn{background:var(--accent);border:none;color:#fff;padding:4px 10px;border-radius:5px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600}
+.alert-cards-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-bottom:20px}
+.alert-card{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:12px 13px;cursor:pointer;transition:border-color .15s}
+.alert-card:hover{border-color:var(--accent)}
+.alert-card.blocked{border-left:3px solid var(--red)}
+.alert-card.overdue {border-left:3px solid var(--orange)}
+.alert-card.atrisk  {border-left:3px solid var(--yellow)}
+.alert-card.nolink  {border-left:3px solid var(--purple)}
+.alert-card h4{font-size:12px;font-weight:600;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.alert-card .ac-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:5px}
+.alert-card .ac-m{font-size:10px;color:var(--text3)}
+.alert-card .ac-m strong{color:var(--text2)}
+.no-alerts{text-align:center;padding:30px;color:var(--text3);font-size:13px;background:var(--surface);border-radius:9px;border:1px solid var(--border)}
+
+/* TOAST */
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--green);color:#0f1117;padding:10px 22px;border-radius:8px;font-size:13px;font-weight:700;opacity:0;transition:all .3s;z-index:999;pointer-events:none;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+.empty{text-align:center;padding:50px 20px;color:var(--text3)}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="logo">AWL Trade<span>Track</span></div>
+    <nav class="tab-nav">
+      <button class="tab-btn active" data-tab="projects">Projects</button>
+      <button class="tab-btn" data-tab="dashboard">Dashboard</button>
+      <button class="tab-btn" data-tab="alerts">Alerts</button>
+    </nav>
+    <div class="topbar-actions">
+      <button class="export-btn" id="exportBtn">↓ Export Excel</button>
+      <button class="bulk-btn" id="openBulkEntry">⊞ Bulk Entry</button>
+      <button class="new-btn" id="openNewProject">+ New Project</button>
+    </div>
+  </div>
+
+  <!-- SHARED FILTER BAR — shown on Projects and Dashboard tabs -->
+  <div class="filter-bar" id="sharedFilterBar">
+    <input type="text" id="freeSearch" placeholder="🔍  Brand, product, town, SPOC…">
+    <select id="filterBrand"><option value="">All Brands</option></select>
+    <select id="filterProductType"><option value="">All Product Types</option></select>
+    <select id="filterSubBrand"><option value="">All Sub Brands</option></select>
+    <select id="filterActivityType"><option value="">All Activity Types</option></select>
+    <select id="filterElement"><option value="">All Elements</option></select>
+    <select id="filterTMSPOC"><option value="">All TM SPOCs</option></select>
+    <select id="filterBrandSPOC"><option value="">All Brand SPOCs</option></select>
+    <select id="filterZone"><option value="">All Zones</option></select>
+    <select id="filterStatus"><option value="">All Statuses</option>
+      <option>Completed</option><option>GRN Pending</option><option>Dispatched/In Transit</option>
+      <option>Execution in Progress</option><option>Awaiting PO/Prov. Approval</option>
+      <option>Creative Pending</option><option>Blocked–External</option>
+      <option>Planned/Not Started</option><option>Postponed/Dropped</option><option>In Process (Misc)</option>
+    </select>
+    <select id="filterDept"><option value="">All Departments</option></select>
+    <select id="filterEdits">
+      <option value="">All Projects</option>
+      <option value="any">Has Any Edits</option>
+      <option value="sensitive">Sensitive Edits</option>
+      <option value="recent7">Edited – Last 7 days</option>
+      <option value="recent30">Edited – Last 30 days</option>
+      <option value="overdue">Overdue</option>
+      <option value="nolink">Completed – Missing Link</option>
+    </select>
+    <span class="filter-count" id="filterCount">— projects</span>
+    <span class="filter-active-badge" id="filterActiveBadge">Filtered</span>
+    <button class="group-update-btn" id="groupUpdateBtn">⚡ Update All Filtered</button>
+    <button class="reset-btn" id="resetFilters">✕ Reset</button>
+  </div>
+
+  <div class="main">
+    <!-- PROJECTS TAB -->
+    <div class="tab-pane active" id="tab-projects">
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>#</th><th>Brand · Product · Sub Brand</th><th>Activity Type</th><th>Element</th>
+            <th>State / Town</th><th>Zone</th><th>TM SPOC</th><th>Brand SPOC</th><th>Vendor</th>
+            <th>Status</th><th style="text-align:right">Alloc.</th><th style="text-align:right">Unit Cost</th>
+            <th style="text-align:right">Total Budget</th><th>Creative</th><th>Start Date</th>
+            <th style="text-align:right">Age</th><th>Expected</th><th>Exec. Link</th>
+            <th>Edits</th><th>Latest Update</th>
+          </tr></thead>
+          <tbody id="projectTbody"></tbody>
+        </table>
+        <div class="empty" id="emptyMsg" style="display:none">No projects match your filters.</div>
+      </div>
+    </div>
+
+    <!-- DASHBOARD TAB -->
+    <div class="tab-pane" id="tab-dashboard">
+      <div class="dashboard-body">
+        <div class="dash-filter-info" id="dashFilterInfo" style="display:none"></div>
+        <div class="metrics-row" id="metricsRow"></div>
+        <div class="charts-row">
+          <div class="chart-card">
+            <h3>Projects by Status <span style="font-size:9px;color:var(--text3);font-weight:400;text-transform:none">(click to filter)</span></h3>
+            <div class="status-bars" id="statusBars"></div>
+          </div>
+          <div class="chart-card">
+            <h3>Completion Trend – Expected by Week</h3>
+            <svg id="trendSvg" class="trend-svg" viewBox="0 0 500 158" preserveAspectRatio="none"></svg>
+          </div>
+        </div>
+        <div class="chart-card" style="margin-bottom:11px">
+          <h3>Recent Field Edits – Audit Feed <span style="font-size:9px;color:var(--text3);font-weight:400;text-transform:none">(click to open project)</span></h3>
+          <div id="auditFeed"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ALERTS TAB -->
+    <div class="tab-pane" id="tab-alerts">
+      <div class="alerts-body">
+        <div class="alert-metrics-row" id="alertMetricsRow"></div>
+        <div id="alertSectionBlocked" class="alert-section"></div>
+        <div id="alertSectionOverdue"  class="alert-section"></div>
+        <div id="alertSectionAtRisk"   class="alert-section"></div>
+        <div id="alertSectionNoLink"   class="alert-section"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- NEW / EDIT MODAL -->
+<div class="overlay" id="projectModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="modalTitle">Register New Project</h2>
+      <button class="modal-close" id="closeModal">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="dupWarn" class="dup-warn">⚠ A project with this combination already exists.</div>
+      <div id="creativeWarn" class="creative-warn">⚠ Creative Approved — "Creative Pending" status removed. Auto-set to next stage.</div>
+      <div class="form-grid">
+        <div class="form-section-title">Product Identity</div>
+        <div class="field"><label>Brand *</label><select id="fBrand"></select></div>
+        <div class="field"><label>Product Type *</label><select id="fProductType"><option value=""></option></select></div>
+        <div class="field"><label>Sub Brand</label><select id="fSubBrand"><option value=""></option></select></div>
+        <div class="form-sep"></div>
+        <div class="form-section-title">Activity</div>
+        <div class="field"><label>Activity Type *</label><select id="fActivityType"><option value=""></option></select></div>
+        <div class="field"><label>Element *</label><select id="fElementForm"><option value=""></option></select></div>
+        <div class="field"><label>Department</label>
+          <select id="fDept"><option></option><option>Outdoor</option><option>Modern Trade</option><option>General Trade</option><option>E-Commerce</option><option>HoReCa</option><option>Institutional</option></select>
+        </div>
+        <div class="form-sep"></div>
+        <div class="form-section-title">Geography</div>
+        <div class="field"><label>State</label><select id="fState"><option value=""></option></select></div>
+        <div class="field"><label>Town</label><input type="text" id="fTown"></div>
+        <div class="field"><label>Segment</label><select id="fSegment"><option></option><option>Urban</option><option>Semi-Urban</option><option>Rural</option></select></div>
+        <div class="field"><label>Zone</label><select id="fZone"><option></option><option>Central</option><option>East</option><option>North 1</option><option>North 2</option><option>South 1</option><option>South 2</option><option>West</option></select></div>
+        <div class="field span2"></div>
+        <div class="form-sep"></div>
+        <div class="form-section-title">People</div>
+        <div class="field typeahead-wrap"><label>TM SPOC</label><input type="text" id="fTMSPOC" placeholder="Type to search…" autocomplete="off"><div class="typeahead-dd" id="tmspocDD"></div></div>
+        <div class="field typeahead-wrap"><label>Brand SPOC</label><input type="text" id="fBrandSPOC" placeholder="Type to search…" autocomplete="off"><div class="typeahead-dd" id="brandspocDD"></div></div>
+        <div class="field"><label>Vendor</label><input type="text" id="fVendor"></div>
+        <div class="form-sep"></div>
+        <div class="form-section-title">Financials</div>
+        <div class="field"><label>Allocation (Units)</label><input type="number" id="fAllocation" min="0" placeholder="0"></div>
+        <div class="field"><label>Unit Cost (₹)</label><input type="number" id="fUnitCost" min="0" placeholder="0"></div>
+        <div class="field"><label>Total Budget (₹) – auto</label><input type="number" id="fBudget" readonly></div>
+        <div class="field span3"><label>Execution Link</label><input type="url" id="fExecLink" placeholder="https://…"></div>
+        <div class="form-sep"></div>
+        <div class="form-section-title">Status & Timeline</div>
+        <div class="field"><label>Status</label>
+          <select id="fStatus">
+            <option value="Planned/Not Started">Planned/Not Started</option>
+            <option>Creative Pending</option><option>Awaiting PO/Prov. Approval</option>
+            <option>In Process (Misc)</option><option>Execution in Progress</option>
+            <option>Dispatched/In Transit</option><option>GRN Pending</option>
+            <option>Completed</option><option>Blocked–External</option><option>Postponed/Dropped</option>
+          </select>
+        </div>
+        <div class="field"><label>Creative Status</label><select id="fCreative"><option>Not Applicable</option><option>Pending</option><option>In Review</option><option>Approved</option></select></div>
+        <div class="field"><label>Expected Completion</label><input type="date" id="fExpected"></div>
+        <div class="form-sep"></div>
+        <div class="form-section-title">Remarks / Initial Update</div>
+        <div class="field span3"><label>Remarks</label><textarea id="fNote" placeholder="Context, blockers, initial remarks…"></textarea></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" id="cancelModal">Cancel</button>
+      <button class="btn btn-primary" id="saveProject">Save Project</button>
+    </div>
+  </div>
+</div>
+
+<!-- BULK ENTRY MODAL -->
+<div class="overlay" id="bulkModal">
+  <div class="modal" style="width:1100px;max-width:98vw">
+    <div class="modal-head">
+      <h2>⊞ Bulk Project Entry — Common fields once, multiple locations</h2>
+      <button class="modal-close" id="closeBulkModal">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:16px">
+        <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:12px">Common Fields — apply to all locations</div>
+        <div class="form-grid">
+          <div class="field"><label>Brand *</label><select id="bBrand"></select></div>
+          <div class="field"><label>Product Type *</label><select id="bProductType"><option value=""></option></select></div>
+          <div class="field"><label>Sub Brand</label><select id="bSubBrand"><option value=""></option></select></div>
+          <div class="field"><label>Activity Type *</label><select id="bActivityType"><option value=""></option></select></div>
+          <div class="field"><label>Element *</label><select id="bElementForm"><option value=""></option></select></div>
+          <div class="field"><label>Department</label>
+            <select id="bDept"><option></option><option>Outdoor</option><option>Modern Trade</option><option>General Trade</option><option>E-Commerce</option><option>HoReCa</option><option>Institutional</option></select>
+          </div>
+          <div class="field typeahead-wrap"><label>TM SPOC</label><input type="text" id="bTMSPOC" placeholder="Type to search…" autocomplete="off"><div class="typeahead-dd" id="btmspocDD"></div></div>
+          <div class="field typeahead-wrap"><label>Brand SPOC</label><input type="text" id="bBrandSPOC" placeholder="Type to search…" autocomplete="off"><div class="typeahead-dd" id="bbrandspocDD"></div></div>
+          <div class="field"><label>Creative Status</label><select id="bCreative"><option>Not Applicable</option><option>Pending</option><option>In Review</option><option>Approved</option></select></div>
+          <div class="field"><label>Status</label>
+            <select id="bStatus">
+              <option value="Planned/Not Started">Planned/Not Started</option>
+              <option>Creative Pending</option><option>Awaiting PO/Prov. Approval</option>
+              <option>In Process (Misc)</option><option>Execution in Progress</option>
+              <option>Dispatched/In Transit</option><option>GRN Pending</option>
+              <option>Completed</option><option>Blocked–External</option><option>Postponed/Dropped</option>
+            </select>
+          </div>
+          <div class="field"><label>Expected Completion</label><input type="date" id="bExpected"></div>
+          <div class="field"></div>
+        </div>
+      </div>
+      <div style="font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px">Location Rows — each row becomes a separate project</div>
+      <div style="overflow-x:auto">
+        <table class="bulk-locations-table" id="bulkLocTable">
+          <thead><tr>
+            <th>#</th>
+            <th>State</th><th>Town *</th><th>Zone</th><th>Segment</th>
+            <th>Vendor</th><th>Allocation</th><th>Unit Cost (₹)</th><th>Budget (₹)</th>
+            <th>Exec. Link</th><th>Remarks</th><th></th>
+          </tr></thead>
+          <tbody id="bulkLocTbody"></tbody>
+        </table>
+      </div>
+      <button class="add-row-btn" id="addBulkRow">+ Add Location Row</button>
+      <div id="bulkDupWarnings" style="margin-top:10px"></div>
+    </div>
+    <div class="modal-foot">
+      <span class="bulk-summary" id="bulkSummary"></span>
+      <button class="btn btn-ghost" id="cancelBulkModal">Cancel</button>
+      <button class="btn btn-green" id="saveBulkProjects">Save All Projects</button>
+    </div>
+  </div>
+</div>
+
+<!-- GROUP UPDATE MODAL -->
+<div class="overlay" id="groupUpdateModal">
+  <div class="modal group-update-modal">
+    <div class="modal-head">
+      <h2>⚡ Group Update</h2>
+      <button class="modal-close" id="closeGroupModal">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Posting this update to <strong id="groupUpdateCount" style="color:var(--orange)">0</strong> projects currently shown in filtered view:</div>
+      <div class="group-update-list" id="groupUpdateList"></div>
+      <div class="field" style="margin-bottom:10px">
+        <label>Update Note *</label>
+        <textarea id="groupUpdateNote" placeholder="e.g. All locations reviewed in monthly meet — moving to next stage" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:8px 10px;font-family:inherit;font-size:13px;resize:none;outline:none;height:70px;margin-top:4px"></textarea>
+      </div>
+      <div class="field">
+        <label>Change Status (optional — applies to all)</label>
+        <select id="groupUpdateStatus" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:7px 10px;font-family:inherit;font-size:13px;outline:none;margin-top:4px">
+          <option value="">— Keep each project's current status —</option>
+          <option>Planned/Not Started</option><option>Creative Pending</option>
+          <option>Awaiting PO/Prov. Approval</option><option>In Process (Misc)</option>
+          <option>Execution in Progress</option><option>Dispatched/In Transit</option>
+          <option>GRN Pending</option><option>Completed</option>
+          <option>Blocked–External</option><option>Postponed/Dropped</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" id="cancelGroupModal">Cancel</button>
+      <button class="btn btn-primary" id="saveGroupUpdate">Post to All</button>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL MODAL -->
+<div class="overlay" id="detailModal">
+  <div class="modal detail-modal">
+    <div class="modal-head">
+      <h2 id="detailTitle">Project Detail</h2>
+      <button class="btn btn-ghost" id="editProjectBtn" style="font-size:11px;padding:4px 9px">✎ Edit</button>
+      <button class="modal-close" id="closeDetail">✕</button>
+    </div>
+    <div class="modal-body" id="detailBody"></div>
+  </div>
+</div>
+
+<div class="toast" id="toastEl"></div>
+
+<script>
+// ══════════════════════════════════════════════
+//  CONSTANTS
+// ══════════════════════════════════════════════
+const SPOC_LIST=["Ankit Sharma","Priya Nair","Deepak Menon","Sunita Rao","Rahul Desai","Kavitha Reddy","Saurabh Joshi","Meera Pillai","Aakash Verma","Sneha Gupta"];
+const MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const ZONES=["Central","East","North 1","North 2","South 1","South 2","West"];
+const INDIAN_STATES=["Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh","Goa","Gujarat","Haryana","Himachal Pradesh","Jharkhand","Karnataka","Kerala","Madhya Pradesh","Maharashtra","Manipur","Meghalaya","Mizoram","Nagaland","Odisha","Punjab","Rajasthan","Sikkim","Tamil Nadu","Telangana","Tripura","Uttar Pradesh","Uttarakhand","West Bengal","Andaman & Nicobar Islands","Chandigarh","Dadra & Nagar Haveli and Daman & Diu","Delhi","Jammu & Kashmir","Ladakh","Lakshadweep","Puducherry","Pan India"];
+const ALL_STATUSES=["Planned/Not Started","Creative Pending","Awaiting PO/Prov. Approval","In Process (Misc)","Execution in Progress","Dispatched/In Transit","GRN Pending","Completed","Blocked–External","Postponed/Dropped"];
+
+const ACTIVITY_CATALOGUE=[
+  ["3P_Enabler","Jackets- DSM"],["3P_Enabler","Product Brochures- Digital"],["3P_Enabler","Product Brochures- Physical"],["3P_Enabler","Selling Story- AV"],["3P_Enabler","Selling Story- Static"],
+  ["Consumer_Engagement","Wet Sampling"],["Consumer_Engagement","Dry Sampling"],["Consumer_Engagement","Society- CEP"],["Consumer_Engagement","Newspaper Insertion"],["Consumer_Engagement","Canter Activation"],["Consumer_Engagement","Canopy"],["Consumer_Engagement","Corporate Brochures- Physical"],
+  ["Digital","My-Gate App"],
+  ["In-Store","Mall branding"],["In-Store","Society Branding- Lift (Inside)"],["In-Store","Society Branding- Digital LED"],["In-Store","Society Branding - Entry Gates"],["In-Store","Glow Sign Board"],["In-Store","Non-lit Board"],["In-Store","ACP Board"],["In-Store","Flange- Paper"],["In-Store","Flange- Premium"],["In-Store","Shelf Strips"],["In-Store","CTU"],["In-Store","FSU"],["In-Store","Posters"],["In-Store","Banners"],["In-Store","Hangers"],["In-Store","Danglers"],["In-Store","Buntings (Toran)"],["In-Store","End Cap- Side Panels"],["In-Store","End Cap- Shelf Strips"],["In-Store","End Cap- Headers"],["In-Store","Parasites - SS"],["In-Store","Wobblers"],["In-Store","One Way Vision"],["In-Store","Standee"],["In-Store","Counter branding"],["In-Store","Pillar branding"],["In-Store","Shelf tray"],["In-Store","Counter top dispenser"],["In-Store","Parasites - Premium stores"],["In-Store","Category basket - Branded"],["In-Store","Trolley branding- SS"],["In-Store","Consumer leaflet"],["In-Store","Customised In Store wall wrap"],["In-Store","Tin Plates"],["In-Store","Foam Banner"],["In-Store","Baloon"],
+  ["Outdoor","Festival Pandals"],["Outdoor","Hoardings"],["Outdoor","Wall Painting"],["Outdoor","Digital Wall Painting"],["Outdoor","Bus shelters"],["Outdoor","Bill Boards"],["Outdoor","Digital Hoarding"],["Outdoor","Pole kiosk"],["Outdoor","Gantry"],["Outdoor","Mela Activation"],
+  ["Shopper Engagement","In-Store- Promoters"],
+  ["Team  Engagement","T-Shirts- Team"],["Team  Engagement","Jackets- Team"],
+  ["Trade engagement","Umbrella"],["Trade engagement","Calendar"],["Trade engagement","T Shirts- Mundu"],["Trade engagement","Jute Bag"],["Trade engagement","Gift Article - QPS"],["Trade engagement","Canvas Bags"],["Trade engagement","Retailer stationery"],["Trade engagement","Sandwich Board"],["Trade engagement","Products Seeding"],["Trade engagement","CD QPS"],
+  ["Transit Media","Car mesh"],["Transit Media","Bus panel"],["Transit Media","Bus Full wrap"],["Transit Media","Auto Branding"],["Transit Media","Vehicle Branding- CD"],
+];
+const ACTIVITY_TYPES=[...new Set(ACTIVITY_CATALOGUE.map(r=>r[0]))];
+
+const CATALOGUE=[
+  ["AADHAAR","BAKERY","NON-REFINED"],["WILSHORT","PREMIUM BAKERY","NON-REFINED"],["FORTUNE","BLEND","XPERT"],["FORTUNE","GROUND NUT","ACTIVE"],["FORTUNE","DFMO","NON-REFINED"],["JUBILEE","MUSTARD","REFINED"],["FORTUNE","KGMO","NON-REFINED"],["FORTUNE","FIRST PRESSED MUSTARD","PEHLI DHAAR"],["WILFIL","LAURIC","NON-REFINED"],["WILCAKE","MARGERINE","NON-REFINED"],["FORTUNE","COTTON SEED OIL","REFINED"],["KINGS","COTTONSEED","REFINED"],["FORTUNE","REFINED MUSTARD","REFINED"],["RAAG GOLD","PALMOLEIN","REFINED"],["FORTUNE","RICE BRAN","REFINED"],["FORTUNE","SOYA BEAN OIL","REFINED"],["FORTUNE","SUN FLOWER","REFINED"],["RAAG VAN","VANASPATI","NON-REFINED"],["FORTUNE","CHAKKI ATTA","CHAKKI"],["FORTUNE","SHARBATI ATTA","SHARBATI"],["FORTUNE","CHANA BESAN","SUPERFINE BESAN"],["FORTUNE","CHANA SATTU","SATTU"],["FORTUNE","MATAR BESAN","SUPERFINE BESAN"],["FORTUNE","BASMATI RICE","ROZANA"],["FORTUNE","KHICHADI","SUPERFOOD"],["FORTUNE","BIRYANI KIT","HYDERABADI"],["KOHINOOR","BROWN RICE","Charminar Brown"],["FORTUNE","CAKE MIX","CLASSIC"],["FORTUNE","MAIDA","CHAKKI"],["FORTUNE","NON BASMATI","KOLAM"],["FORTUNE","NON-GMO SOYA NUGGETS","SOYA BARI"],["FORTUNE","REGULAR SOYA NUGGETS","SOYA BARI"],["FORTUNE","THICK POHA","POHA"],["FORTUNE","INDORI POHA","POHA"],["FORTUNE","CHANA","DAL"],["FORTUNE","KABULI CHANA STD","WHOLE"],["FORTUNE","MOONG","DAL"],["FORTUNE","RAJMA CHITRA","WHOLE"],["FORTUNE","MATAR","FLOUR"],["FORTUNE","MASOOR","DAL"],["FORTUNE","MASOOR SMALL","MALKA/GOTA"],["FORTUNE","ARHAR","DAL"],["FORTUNE","RAWA","CHAKKI"],["FORTUNE","SUGAR","SUGAR"],["FORTUNE","SUJI","CHAKKI"],["FORTUNE","WHEAT","SHARBATI"],["OZEL","MULTIPURPOSE CLEANER","MULTIPURPOSE CLEANER"],["ALIFE","HANDWASH","LEMON"],["ALIFE","SOAP CAKE","SOFT AND GENTLE"],
+];
+const BRANDS=[...new Set(CATALOGUE.map(r=>r[0]))].sort();
+
+// ══════════════════════════════════════════════
+//  HELPERS
+// ══════════════════════════════════════════════
+const STATUS_KEY=s=>{if(s==="Completed")return"Completed";if(s==="GRN Pending")return"GRN";if(s.startsWith("Dispatched"))return"Dispatched";if(s.startsWith("Execution"))return"Execution";if(s.startsWith("Awaiting"))return"PO";if(s.startsWith("Creative"))return"Creative";if(s.startsWith("Blocked"))return"Blocked";if(s.startsWith("Planned"))return"Planned";if(s.startsWith("Postponed"))return"Postponed";return"Misc";};
+const CREATIVE_KEY=c=>c==="Approved"?"Approved":c==="Pending"?"Pending":c==="In Review"?"Review":"NA";
+const fmtINR=n=>n?"₹"+Number(n).toLocaleString("en-IN"):"—";
+const fmtDate=d=>{if(!d)return"—";const[y,m,dd]=d.split("-");return`${+dd} ${MONTHS[+m-1]} ${y}`;};
+const today=()=>new Date().toISOString().slice(0,10);
+const daysDiff=(a,b)=>Math.round((new Date(b)-new Date(a))/86400000);
+const latestUpdate=p=>p.history.length?p.history[p.history.length-1]:null;
+const prodLabel=p=>[p.brand,p.productType,p.subBrand].filter(Boolean).join(" · ");
+const dupKey=p=>[p.brand,p.productType,p.element,p.town,p.tmSpoc].map(s=>(s||"").toLowerCase().trim()).join("|");
+const getBadge=s=>`<span class="badge badge-${STATUS_KEY(s)}">${s}</span>`;
+const getCrBadge=c=>{const k=CREATIVE_KEY(c);const l=c==="Not Applicable"?"N/A":c;return`<span class="badge badge-cr-${k}">${l}</span>`;};
+const isOverdue=p=>p.expected&&p.expected<today()&&p.status!=="Completed"&&p.status!=="Postponed/Dropped";
+const isMissingLink=p=>p.status==="Completed"&&!p.execLink;
+
+function showToast(msg,duration=2500){
+  const t=document.getElementById("toastEl");
+  t.textContent=msg; t.classList.add("show");
+  setTimeout(()=>t.classList.remove("show"),duration);
+}
+
+// ══════════════════════════════════════════════
+//  SEED DATA
+// ══════════════════════════════════════════════
+let projects=[
+  {id:1,brand:"FORTUNE",productType:"SUN FLOWER",subBrand:"REFINED",dept:"Outdoor",activityType:"Outdoor",element:"Hoardings",state:"Maharashtra",town:"Pune",segment:"Urban",zone:"West",tmSpoc:"Ankit Sharma",brandSpoc:"Sunita Rao",vendor:"ShopVision Pvt Ltd",allocation:30,unitCost:2200,creative:"Approved",expected:"2025-06-15",status:"Execution in Progress",execLink:"https://drive.google.com/file/shopfascia-pune",startDate:"2025-05-01",history:[{date:"2025-05-01",status:"Planned/Not Started",note:"Project created. Brand: FORTUNE · SUN FLOWER · REFINED | Activity: Outdoor · Hoardings | Status: Planned/Not Started",type:"created"},{date:"2025-05-22",status:"Execution in Progress",note:"Fabrication complete. Installation begins this week."}]},
+  {id:2,brand:"FORTUNE",productType:"RICE BRAN",subBrand:"REFINED",dept:"General Trade",activityType:"In-Store",element:"Shelf Strips",state:"Karnataka",town:"Bengaluru",segment:"Urban",zone:"South 1",tmSpoc:"Priya Nair",brandSpoc:"Kavitha Reddy",vendor:"MediaMax India",allocation:120,unitCost:45,creative:"Approved",expected:"2025-06-01",status:"Completed",execLink:"",startDate:"2025-04-20",history:[{date:"2025-04-20",status:"Planned/Not Started",note:"Project created.",type:"created"},{date:"2025-05-08",status:"Awaiting PO/Prov. Approval",note:"Creative approved."},{date:"2025-05-20",status:"Completed",note:"All installed."}]},
+  {id:3,brand:"FORTUNE",productType:"CHAKKI ATTA",subBrand:"CHAKKI",dept:"Modern Trade",activityType:"In-Store",element:"Standee",state:"Tamil Nadu",town:"Chennai",segment:"Urban",zone:"South 1",tmSpoc:"Deepak Menon",brandSpoc:"Priya Nair",vendor:"PrintZone",allocation:50,unitCost:1800,creative:"Pending",expected:"2025-06-30",status:"Creative Pending",execLink:"",startDate:"2025-05-10",history:[{date:"2025-05-10",status:"Planned/Not Started",note:"Project created.",type:"created"},{date:"2025-05-28",status:"Creative Pending",note:"First draft rejected."}]},
+  {id:4,brand:"AADHAAR",productType:"BAKERY",subBrand:"NON-REFINED",dept:"Outdoor",activityType:"Outdoor",element:"Bill Boards",state:"Delhi",town:"New Delhi",segment:"Urban",zone:"North 1",tmSpoc:"Sunita Rao",brandSpoc:"Rahul Desai",vendor:"OutdoorKing",allocation:5,unitCost:85000,creative:"Approved",expected:"2025-07-10",status:"Awaiting PO/Prov. Approval",execLink:"",startDate:"2025-05-12",history:[{date:"2025-05-12",status:"Planned/Not Started",note:"Project created.",type:"created"},{date:"2025-06-01",status:"Awaiting PO/Prov. Approval",note:"Awaiting sign-off."}]},
+  {id:5,brand:"FORTUNE",productType:"REFINED MUSTARD",subBrand:"REFINED",dept:"General Trade",activityType:"In-Store",element:"Glow Sign Board",state:"West Bengal",town:"Kolkata",segment:"Semi-Urban",zone:"East",tmSpoc:"Rahul Desai",brandSpoc:"Ankit Sharma",vendor:"LightCraft",allocation:20,unitCost:7500,creative:"Approved",expected:"2025-05-25",status:"Blocked–External",execLink:"",startDate:"2025-04-28",history:[{date:"2025-04-28",status:"Planned/Not Started",note:"Project created.",type:"created"},{date:"2025-05-20",status:"Blocked–External",note:"Held at border – transport strike."}]},
+  {id:6,brand:"FORTUNE",productType:"BASMATI RICE",subBrand:"ROZANA",dept:"HoReCa",activityType:"Trade engagement",element:"Retailer stationery",state:"Goa",town:"Panaji",segment:"Urban",zone:"West",tmSpoc:"Kavitha Reddy",brandSpoc:"Meera Pillai",vendor:"PrintZone",allocation:200,unitCost:18,creative:"Approved",expected:"2025-06-05",status:"GRN Pending",execLink:"",startDate:"2025-05-08",history:[{date:"2025-05-08",status:"Planned/Not Started",note:"Project created.",type:"created"},{date:"2025-05-24",status:"GRN Pending",note:"GRN pending in SAP."}]},
+  {id:7,brand:"KOHINOOR",productType:"BROWN RICE",subBrand:"Charminar Brown",dept:"Modern Trade",activityType:"In-Store",element:"End Cap- Side Panels",state:"Gujarat",town:"Ahmedabad",segment:"Urban",zone:"West",tmSpoc:"Saurabh Joshi",brandSpoc:"Deepak Menon",vendor:"DisplayPro",allocation:15,unitCost:12000,creative:"Approved",expected:"2025-07-20",status:"Dispatched/In Transit",execLink:"https://drive.google.com/file/endcap-ahm",startDate:"2025-05-20",history:[{date:"2025-05-20",status:"Planned/Not Started",note:"Project created.",type:"created"},{date:"2025-06-04",status:"Dispatched/In Transit",note:"Dispatched via Blue Dart."}]},
+  {id:8,brand:"FORTUNE",productType:"SOYA BEAN OIL",subBrand:"REFINED",dept:"General Trade",activityType:"In-Store",element:"Wobblers",state:"Uttar Pradesh",town:"Lucknow",segment:"Semi-Urban",zone:"North 1",tmSpoc:"Meera Pillai",brandSpoc:"Saurabh Joshi",vendor:"MediaMax India",allocation:500,unitCost:12,creative:"Approved",expected:"2025-06-12",status:"Execution in Progress",execLink:"",startDate:"2025-05-15",history:[{date:"2025-05-15",status:"Planned/Not Started",note:"Project created.",type:"created"},{date:"2025-06-01",status:"Execution in Progress",note:"320 of 500 done."}]},
+  {id:9,brand:"ALIFE",productType:"HANDWASH",subBrand:"LEMON",dept:"Outdoor",activityType:"Outdoor",element:"Bus shelters",state:"Maharashtra",town:"Mumbai",segment:"Urban",zone:"West",tmSpoc:"Aakash Verma",brandSpoc:"Sneha Gupta",vendor:"OutdoorKing",allocation:10,unitCost:55000,creative:"In Review",expected:"2025-08-01",status:"Planned/Not Started",execLink:"",startDate:"2025-06-01",history:[{date:"2025-06-01",status:"Planned/Not Started",note:"Project created.",type:"created"}]},
+  {id:10,brand:"OZEL",productType:"MULTIPURPOSE CLEANER",subBrand:"MULTIPURPOSE CLEANER",dept:"E-Commerce",activityType:"Digital",element:"My-Gate App",state:"Delhi",town:"Pan India",segment:"Urban",zone:"North 1",tmSpoc:"Sneha Gupta",brandSpoc:"Aakash Verma",vendor:"DigitalEdge",allocation:1,unitCost:35000,creative:"Approved",expected:"2025-06-08",status:"Completed",execLink:"https://amazon.in/ozel-aplus",startDate:"2025-05-22",history:[{date:"2025-05-22",status:"Planned/Not Started",note:"Project created.",type:"created"},{date:"2025-06-07",status:"Completed",note:"Live and approved."}]},
+  {id:11,brand:"FORTUNE",productType:"GROUND NUT",subBrand:"ACTIVE",dept:"General Trade",activityType:"In-Store",element:"Counter top dispenser",state:"Rajasthan",town:"Jaipur",segment:"Semi-Urban",zone:"North 2",tmSpoc:"Ankit Sharma",brandSpoc:"Priya Nair",vendor:"DisplayPro",allocation:60,unitCost:1400,creative:"Pending",expected:"2025-07-15",status:"Creative Pending",execLink:"",startDate:"2025-06-01",history:[{date:"2025-06-01",status:"Planned/Not Started",note:"Project created.",type:"created"}]},
+  {id:12,brand:"WILSHORT",productType:"PREMIUM BAKERY",subBrand:"NON-REFINED",dept:"Modern Trade",activityType:"Consumer_Engagement",element:"Canopy",state:"Andhra Pradesh",town:"Hyderabad",segment:"Urban",zone:"South 2",tmSpoc:"Kavitha Reddy",brandSpoc:"Rahul Desai",vendor:"ShopVision Pvt Ltd",allocation:25,unitCost:3200,creative:"Not Applicable",expected:"2025-06-20",status:"In Process (Misc)",execLink:"",startDate:"2025-05-18",history:[{date:"2025-05-18",status:"Planned/Not Started",note:"Project created.",type:"created"}]},
+  {id:13,brand:"FORTUNE",productType:"KHICHADI",subBrand:"SUPERFOOD",dept:"Institutional",activityType:"Consumer_Engagement",element:"Dry Sampling",state:"Kerala",town:"Kochi",segment:"Urban",zone:"South 1",tmSpoc:"Deepak Menon",brandSpoc:"Sunita Rao",vendor:"SampleCo",allocation:300,unitCost:80,creative:"Not Applicable",expected:"2025-05-30",status:"Postponed/Dropped",execLink:"",startDate:"2025-04-25",history:[{date:"2025-04-25",status:"Planned/Not Started",note:"Project created.",type:"created"},{date:"2025-05-25",status:"Postponed/Dropped",note:"Venue unavailable."}]},
+];
+let nextId=14;
+
+// ══════════════════════════════════════════════
+//  DROPDOWN POPULATION HELPERS
+// ══════════════════════════════════════════════
+function populateBrandDD(selId){
+  const el=document.getElementById(selId); const cur=el.value;
+  el.innerHTML=`<option value=""></option>`+BRANDS.map(b=>`<option${cur===b?" selected":""}>${b}</option>`).join("");
+}
+function updateProductTypeDD(brand,ptId,sbId){
+  const types=[...new Set(CATALOGUE.filter(r=>!brand||r[0]===brand).map(r=>r[1]))].sort();
+  document.getElementById(ptId).innerHTML=`<option value=""></option>`+types.map(t=>`<option>${t}</option>`).join("");
+  if(sbId) document.getElementById(sbId).innerHTML=`<option value=""></option>`;
+}
+function updateSubBrandDD(brand,pt,sbId){
+  const subs=CATALOGUE.filter(r=>(!brand||r[0]===brand)&&(!pt||r[1]===pt)).map(r=>r[2]);
+  document.getElementById(sbId).innerHTML=`<option value=""></option>`+subs.map(s=>`<option>${s}</option>`).join("");
+}
+function populateActivityDD(selId){
+  document.getElementById(selId).innerHTML=`<option value=""></option>`+ACTIVITY_TYPES.map(t=>`<option>${t}</option>`).join("");
+}
+function updateElementDD(at,elId){
+  const els=ACTIVITY_CATALOGUE.filter(r=>!at||r[0]===at).map(r=>r[1]);
+  document.getElementById(elId).innerHTML=`<option value=""></option>`+els.map(e=>`<option>${e}</option>`).join("");
+}
+function populateStatesDD(selId){
+  const el=document.getElementById(selId); const cur=el.value;
+  el.innerHTML=`<option value=""></option>`+INDIAN_STATES.map(s=>`<option${cur===s?" selected":""}>${s}</option>`).join("");
+}
+
+// ══════════════════════════════════════════════
+//  SHARED FILTER STATE & POPULATION
+// ══════════════════════════════════════════════
+function getFilters(){
+  return{
+    q:document.getElementById("freeSearch").value.toLowerCase(),
+    br:document.getElementById("filterBrand").value,
+    pt:document.getElementById("filterProductType").value,
+    sb:document.getElementById("filterSubBrand").value,
+    at:document.getElementById("filterActivityType").value,
+    el:document.getElementById("filterElement").value,
+    tsp:document.getElementById("filterTMSPOC").value,
+    bsp:document.getElementById("filterBrandSPOC").value,
+    zo:document.getElementById("filterZone").value,
+    st:document.getElementById("filterStatus").value,
+    de:document.getElementById("filterDept").value,
+    ed:document.getElementById("filterEdits").value,
+  };
+}
+
+function isFilterActive(){
+  const f=getFilters();
+  return f.q||f.br||f.pt||f.sb||f.at||f.el||f.tsp||f.bsp||f.zo||f.st||f.de||f.ed;
+}
+
+function filtered(){
+  const f=getFilters();
+  return projects.filter(p=>{
+    const lu=latestUpdate(p);
+    const txt=[prodLabel(p),p.activityType,p.element,p.town,p.state,p.tmSpoc,p.brandSpoc,p.vendor,lu?lu.note:""].join(" ").toLowerCase();
+    if(f.q&&!txt.includes(f.q)) return false;
+    if(f.br&&p.brand!==f.br) return false;
+    if(f.pt&&p.productType!==f.pt) return false;
+    if(f.sb&&p.subBrand!==f.sb) return false;
+    if(f.at&&p.activityType!==f.at) return false;
+    if(f.el&&p.element!==f.el) return false;
+    if(f.tsp&&p.tmSpoc!==f.tsp) return false;
+    if(f.bsp&&p.brandSpoc!==f.bsp) return false;
+    if(f.zo&&p.zone!==f.zo) return false;
+    if(f.st&&p.status!==f.st) return false;
+    if(f.de&&p.dept!==f.de) return false;
+    if(f.ed){
+      const edits=p.history.filter(h=>h.type==="sensitive"||h.type==="low");
+      if(f.ed==="any"&&!edits.length) return false;
+      if(f.ed==="sensitive"&&!p.history.some(h=>h.type==="sensitive")) return false;
+      if(f.ed==="recent7"&&!edits.some(h=>daysDiff(h.date,today())<=7)) return false;
+      if(f.ed==="recent30"&&!edits.some(h=>daysDiff(h.date,today())<=30)) return false;
+      if(f.ed==="overdue"&&!isOverdue(p)) return false;
+      if(f.ed==="nolink"&&!isMissingLink(p)) return false;
+    }
+    return true;
+  });
+}
+
+function populateFilters(){
+  const fill=(id,arr,label)=>{
+    const el=document.getElementById(id); if(!el) return; const cur=el.value;
+    el.innerHTML=`<option value="">All ${label}</option>`+arr.map(v=>`<option${cur===v?" selected":""}>${v}</option>`).join("");
+  };
+  fill("filterBrand",BRANDS,"Brands");
+  const selBr=document.getElementById("filterBrand").value;
+  const allPT=[...new Set(CATALOGUE.filter(r=>!selBr||r[0]===selBr).map(r=>r[1]))].sort();
+  fill("filterProductType",allPT,"Product Types");
+  const selPT=document.getElementById("filterProductType").value;
+  const allSB=[...new Set(CATALOGUE.filter(r=>(!selBr||r[0]===selBr)&&(!selPT||r[1]===selPT)).map(r=>r[2]))].sort();
+  fill("filterSubBrand",allSB,"Sub Brands");
+  fill("filterActivityType",ACTIVITY_TYPES,"Activity Types");
+  const selAT=document.getElementById("filterActivityType").value;
+  const allEls=[...new Set(ACTIVITY_CATALOGUE.filter(r=>!selAT||r[0]===selAT).map(r=>r[1]))].sort();
+  fill("filterElement",allEls,"Elements");
+  fill("filterTMSPOC",[...new Set(projects.map(p=>p.tmSpoc).filter(Boolean))].sort(),"TM SPOCs");
+  fill("filterBrandSPOC",[...new Set(projects.map(p=>p.brandSpoc).filter(Boolean))].sort(),"Brand SPOCs");
+  fill("filterZone",ZONES,"Zones");
+  fill("filterDept",[...new Set(projects.map(p=>p.dept).filter(Boolean))].sort(),"Departments");
+}
+
+// Filter bar cascade
+document.getElementById("filterBrand").addEventListener("change",()=>{populateFilters();onFilterChange();});
+document.getElementById("filterProductType").addEventListener("change",()=>{populateFilters();onFilterChange();});
+document.getElementById("filterActivityType").addEventListener("change",()=>{populateFilters();onFilterChange();});
+["freeSearch","filterElement","filterSubBrand","filterTMSPOC","filterBrandSPOC","filterZone","filterStatus","filterDept","filterEdits"].forEach(id=>
+  document.getElementById(id).addEventListener("input",onFilterChange)
+);
+
+function onFilterChange(){
+  renderTable();
+  renderDashboard();
+  updateFilterUI();
+}
+
+function updateFilterUI(){
+  const rows=filtered();
+  const active=isFilterActive();
+  document.getElementById("filterActiveBadge").style.display=active?"inline-block":"none";
+  const gBtn=document.getElementById("groupUpdateBtn");
+  if(active&&rows.length>1){
+    gBtn.style.display="inline-block";
+    gBtn.textContent=`⚡ Update All Filtered (${rows.length})`;
+  } else { gBtn.style.display="none"; }
+}
+
+// Reset
+document.getElementById("resetFilters").addEventListener("click",()=>{
+  document.getElementById("freeSearch").value="";
+  ["filterBrand","filterProductType","filterSubBrand","filterActivityType","filterElement","filterTMSPOC","filterBrandSPOC","filterZone","filterStatus","filterDept","filterEdits"].forEach(id=>{const el=document.getElementById(id);if(el)el.selectedIndex=0;});
+  populateFilters(); onFilterChange();
+});
+
+// ══════════════════════════════════════════════
+//  RENDER TABLE
+// ══════════════════════════════════════════════
+function renderTable(){
+  const rows=filtered();
+  document.getElementById("filterCount").textContent=`${rows.length} project${rows.length!==1?"s":""}`;
+  document.getElementById("emptyMsg").style.display=rows.length?"none":"block";
+  document.getElementById("projectTbody").innerHTML=rows.map((p,i)=>{
+    const budget=p.allocation&&p.unitCost?p.allocation*p.unitCost:0;
+    const lu=latestUpdate(p);
+    const age=p.startDate?daysDiff(p.startDate,today()):"—";
+    const overdueFlag=isOverdue(p),mlFlag=isMissingLink(p);
+    const execHtml=p.execLink?`<a class="exec-link" href="${p.execLink}" target="_blank" onclick="event.stopPropagation()">↗ Open</a>`:mlFlag?`<span style="color:var(--purple);font-size:11px">⚠ Missing</span>`:`<span style="color:var(--text3);font-size:11px">—</span>`;
+    const luNote=lu?lu.note.split("\n")[0]:"";
+    const luHtml=lu?`<span class="update-note" title="${luNote.replace(/"/g,'&quot;')}">${lu.type==="sensitive"?"⚠ ":lu.type==="low"?"✎ ":lu.type==="created"?"🆕 ":""}${luNote}</span><span class="update-date">${fmtDate(lu.date)} · ${lu.status}</span>`:`<span class="no-update">No updates</span>`;
+    const sEdits=p.history.filter(h=>h.type==="sensitive"),lEdits=p.history.filter(h=>h.type==="low");
+    const editBadge=sEdits.length?`<span style="background:#2e1212;color:var(--red);border-radius:4px;padding:2px 5px;font-size:10px;font-weight:600">⚠${sEdits.length}</span>`:lEdits.length?`<span style="background:#2e1e10;color:var(--orange);border-radius:4px;padding:2px 5px;font-size:10px;font-weight:600">✎${lEdits.length}</span>`:`<span style="color:var(--text3);font-size:10px">—</span>`;
+    const flags=(overdueFlag?"🔴":"")+(mlFlag?"🔗":"");
+    const rowCls=overdueFlag?"row-overdue":mlFlag?"row-warn":"";
+    return`<tr data-id="${p.id}" class="${rowCls}">
+      <td class="mono">${String(i+1).padStart(2,"0")}</td>
+      <td style="font-weight:600;font-size:11px;max-width:155px">${prodLabel(p)} ${flags}</td>
+      <td style="font-size:11px;color:var(--text2)">${p.activityType||"—"}</td>
+      <td style="font-size:11px">${p.element||"—"}</td>
+      <td style="white-space:nowrap;font-size:11px">${p.state||""} / ${p.town||""}</td>
+      <td style="font-size:11px">${p.zone||"—"}</td>
+      <td style="font-size:11px;white-space:nowrap">${p.tmSpoc||"—"}</td>
+      <td style="font-size:11px;white-space:nowrap">${p.brandSpoc||"—"}</td>
+      <td style="font-size:11px;color:var(--text2)">${p.vendor||"—"}</td>
+      <td>${getBadge(p.status)}</td>
+      <td class="mono" style="text-align:right">${p.allocation||"—"}</td>
+      <td class="mono" style="text-align:right">${p.unitCost?fmtINR(p.unitCost):"—"}</td>
+      <td class="mono" style="text-align:right;font-weight:600;color:var(--yellow)">${budget?fmtINR(budget):"—"}</td>
+      <td>${getCrBadge(p.creative||"Not Applicable")}</td>
+      <td class="mono" style="white-space:nowrap;font-size:10px">${fmtDate(p.startDate)}</td>
+      <td class="mono" style="text-align:right;${overdueFlag?"color:var(--orange);font-weight:600":""}">${age}</td>
+      <td class="mono" style="white-space:nowrap;font-size:10px;${overdueFlag?"color:var(--red);font-weight:600":""}">${fmtDate(p.expected)}</td>
+      <td>${execHtml}</td>
+      <td style="text-align:center">${editBadge}</td>
+      <td class="update-cell">${luHtml}</td>
+    </tr>`;
+  }).join("");
+  document.querySelectorAll("#projectTbody tr").forEach(tr=>tr.addEventListener("click",()=>openDetail(+tr.dataset.id)));
+}
+
+// ══════════════════════════════════════════════
+//  DETAIL MODAL
+// ══════════════════════════════════════════════
+function openDetail(id){
+  const p=projects.find(x=>x.id===id); if(!p) return;
+  document.getElementById("detailTitle").textContent=prodLabel(p);
+  document.getElementById("editProjectBtn").dataset.id=id;
+  renderDetailBody(p);
+  document.getElementById("detailModal").classList.add("open");
+}
+
+function renderDetailBody(p){
+  const budget=p.allocation&&p.unitCost?p.allocation*p.unitCost:0;
+  const age=p.startDate?daysDiff(p.startDate,today()):"—";
+  const execHtml=p.execLink?`<a href="${p.execLink}" target="_blank" style="color:var(--accent);font-size:12px;word-break:break-all">↗ ${p.execLink}</a>`:isMissingLink(p)?`<span style="color:var(--purple)">⚠ Completed but no link</span>`:"—";
+  document.getElementById("detailBody").innerHTML=`
+    <div style="display:flex;gap:7px;align-items:center;margin-bottom:11px;flex-wrap:wrap">
+      ${getBadge(p.status)} ${getCrBadge(p.creative||"Not Applicable")}
+      ${isOverdue(p)?'<span style="background:#2e1e10;color:var(--orange);border-radius:4px;padding:2px 6px;font-size:10px;font-weight:600">🔴 OVERDUE</span>':""}
+      ${isMissingLink(p)?'<span style="background:#1e1235;color:var(--purple);border-radius:4px;padding:2px 6px;font-size:10px;font-weight:600">🔗 LINK MISSING</span>':""}
+    </div>
+    <div class="meta-grid">
+      <div class="meta-chip"><span class="mc-label">Brand</span><span class="mc-value" style="font-weight:700;color:var(--text)">${p.brand}</span></div>
+      <div class="meta-chip"><span class="mc-label">Product Type</span><span class="mc-value">${p.productType}</span></div>
+      <div class="meta-chip"><span class="mc-label">Sub Brand</span><span class="mc-value">${p.subBrand||"—"}</span></div>
+      <div class="meta-chip"><span class="mc-label">Activity Type</span><span class="mc-value">${p.activityType||"—"}</span></div>
+      <div class="meta-chip"><span class="mc-label">Element</span><span class="mc-value">${p.element||"—"}</span></div>
+      <div class="meta-chip"><span class="mc-label">Department</span><span class="mc-value">${p.dept||"—"}</span></div>
+      <div class="meta-chip"><span class="mc-label">State / Town</span><span class="mc-value">${p.state||"—"} / ${p.town||"—"}</span></div>
+      <div class="meta-chip"><span class="mc-label">Zone / Segment</span><span class="mc-value">${p.zone||"—"} · ${p.segment||"—"}</span></div>
+      <div class="meta-chip"><span class="mc-label">Vendor</span><span class="mc-value">${p.vendor||"—"}</span></div>
+      <div class="meta-chip"><span class="mc-label">TM SPOC</span><span class="mc-value">${p.tmSpoc||"—"}</span></div>
+      <div class="meta-chip"><span class="mc-label">Brand SPOC</span><span class="mc-value">${p.brandSpoc||"—"}</span></div>
+      <div class="meta-chip"><span class="mc-label">Allocation</span><span class="mc-value">${p.allocation||"—"} units</span></div>
+      <div class="meta-chip"><span class="mc-label">Unit Cost</span><span class="mc-value">${p.unitCost?fmtINR(p.unitCost):"—"}</span></div>
+      <div class="meta-chip"><span class="mc-label">Total Budget</span><span class="mc-value" style="color:var(--yellow);font-weight:700">${budget?fmtINR(budget):"—"}</span></div>
+      <div class="meta-chip"><span class="mc-label">Start Date</span><span class="mc-value">${fmtDate(p.startDate)}</span></div>
+      <div class="meta-chip"><span class="mc-label">Age (Days)</span><span class="mc-value" style="${isOverdue(p)?"color:var(--orange);font-weight:700":""}">${age} days</span></div>
+      <div class="meta-chip"><span class="mc-label">Expected</span><span class="mc-value" style="${isOverdue(p)?"color:var(--red);font-weight:700":""}">${fmtDate(p.expected)}</span></div>
+      <div class="meta-chip" style="grid-column:span 3"><span class="mc-label">Execution Link</span><span class="mc-value">${execHtml}</span></div>
+    </div>
+    <div class="detail-section-title">Update History (${p.history.length} entries)</div>
+    <div class="timeline-wrap" id="timelineWrap">${buildTimeline(p)}</div>
+    <div class="add-update">
+      <div class="add-update-title">Post New Update</div>
+      <textarea id="newUpdateText" placeholder="What happened? Next steps?"></textarea>
+      <select id="newUpdateStatus">
+        <option value="">— Keep current status —</option>
+        ${ALL_STATUSES.map(s=>`<option>${s}</option>`).join("")}
+      </select>
+      <div class="add-update-foot" style="margin-top:7px">
+        <button class="btn btn-primary" id="submitUpdate" data-id="${p.id}">Post Update</button>
+      </div>
+    </div>`;
+  document.getElementById("submitUpdate").addEventListener("click",function(){
+    const note=document.getElementById("newUpdateText").value.trim();
+    if(!note){document.getElementById("newUpdateText").style.borderColor="var(--red)";return;}
+    document.getElementById("newUpdateText").style.borderColor="";
+    const newStatus=document.getElementById("newUpdateStatus").value;
+    const proj=projects.find(x=>x.id===+this.dataset.id); if(!proj) return;
+    if(newStatus) proj.status=newStatus;
+    proj.history.push({date:today(),status:proj.status,note});
+    document.getElementById("timelineWrap").innerHTML=buildTimeline(proj);
+    document.getElementById("newUpdateText").value="";
+    document.getElementById("newUpdateStatus").value="";
+    showToast("✓ Update posted successfully");
+    renderTable(); renderDashboard(); renderAlerts();
+  });
+}
+
+function buildTimeline(p){
+  if(!p.history.length) return`<div style="color:var(--text3);font-size:13px;padding:10px 0">No updates yet.</div>`;
+  return[...p.history].reverse().map((h,i,arr)=>{
+    const isSens=h.type==="sensitive",isLow=h.type==="low",isEdit=isSens||isLow,isCreated=h.type==="created";
+    const dotStyle=isSens?`width:9px;height:9px;border-radius:2px;background:var(--red);flex-shrink:0;margin-top:2px`:isLow?`width:9px;height:9px;border-radius:2px;background:var(--orange);flex-shrink:0;margin-top:2px`:isCreated?`width:9px;height:9px;background:var(--teal);flex-shrink:0;margin-top:2px`:"";
+    const dotClass=isEdit||isCreated?"":(h.status==="Completed"?"green":h.status==="Blocked–External"?"red":h.status==="Postponed/Dropped"?"yellow":h.status==="Planned/Not Started"?"grey":"");
+    const pill=isSens?`<span style="font-size:9px;background:#2e1212;color:var(--red);border:1px solid var(--red);border-radius:3px;padding:1px 5px;margin-bottom:3px;display:inline-block">⚠ SENSITIVE EDIT</span>`:isLow?`<span style="font-size:9px;background:#2e1e10;color:var(--orange);border:1px solid var(--orange);border-radius:3px;padding:1px 5px;margin-bottom:3px;display:inline-block">✎ FIELD EDIT</span>`:isCreated?`<span style="font-size:9px;background:#0d2e2e;color:var(--teal);border:1px solid var(--teal);border-radius:3px;padding:1px 5px;margin-bottom:3px;display:inline-block">🆕 PROJECT CREATED</span>`:(i===0?'<span class="latest-pill">LATEST</span>':"");
+    let noteHtml;
+    if(isEdit){
+      const lines=h.note.split("\n");const reasonLine=lines.find(l=>l.startsWith("Reason:"));
+      noteHtml=`<div style="display:flex;flex-direction:column;gap:3px">`+lines.filter(l=>!l.startsWith("Reason:")).map(l=>{const ci=l.indexOf(":");return`<div style="display:flex;gap:7px;align-items:baseline"><span style="font-size:10px;color:var(--text3);min-width:125px;flex-shrink:0">${l.substring(0,ci).trim()}</span><span style="font-size:12px;color:var(--text)">${l.substring(ci+1).trim()}</span></div>`;}).join("")+`</div>`+(reasonLine?`<div style="font-size:11px;color:var(--text2);background:var(--surface2);border-radius:4px;padding:4px 7px;margin-top:3px">💬 ${reasonLine.replace("Reason:","").trim()}</div>`:"");
+    }else if(isCreated){
+      noteHtml=`<div style="font-size:12px;color:var(--text2);line-height:1.8">${h.note.split(" | ").join("<br>")}</div>`;
+    }else{noteHtml=`<div style="font-size:13px;color:var(--text);line-height:1.5">${h.note}</div>`;}
+    const rowBg=isSens?"rgba(240,82,82,0.05)":isLow?"rgba(245,137,74,0.04)":isCreated?"rgba(56,196,196,0.05)":"transparent";
+    return`<div class="timeline-item" style="${(isEdit||isCreated)?"background:"+rowBg+";border-radius:6px;padding:8px 6px;margin-bottom:2px":""}">
+      <div class="tl-left"><div class="tl-dot ${dotClass}" ${(isEdit||isCreated)?`style="${dotStyle}"`:""}></div>${i<arr.length-1?'<div class="tl-line"></div>':""}</div>
+      <div class="tl-body">${pill}${noteHtml}<div class="tl-meta" style="margin-top:3px">${fmtDate(h.date)} · <span style="color:var(--text2)">${h.status}</span></div></div>
+    </div>`;
+  }).join("");
+}
+
+document.getElementById("closeDetail").addEventListener("click",()=>document.getElementById("detailModal").classList.remove("open"));
+document.getElementById("detailModal").addEventListener("click",function(e){if(e.target===this)this.classList.remove("open");});
+document.getElementById("editProjectBtn").addEventListener("click",function(){document.getElementById("detailModal").classList.remove("open");openEditModal(+this.dataset.id);});
+
+// ══════════════════════════════════════════════
+//  CREATIVE STATUS CHECK
+// ══════════════════════════════════════════════
+function checkCreativeStatus(creativeId,statusId,warnId){
+  const creative=document.getElementById(creativeId).value;
+  const statusEl=document.getElementById(statusId);
+  const warn=document.getElementById(warnId);
+  if(!warn) return;
+  const curVal=statusEl.value;
+  if(creative==="Approved"){
+    const allowed=ALL_STATUSES.filter(s=>s!=="Creative Pending");
+    statusEl.innerHTML=allowed.map(s=>`<option value="${s}"${curVal===s?" selected":""}>${s}</option>`).join("");
+    if(!statusEl.value||statusEl.value==="Creative Pending"){statusEl.value="Awaiting PO/Prov. Approval";warn.style.display="block";}
+    else warn.style.display="none";
+  }else{
+    statusEl.innerHTML=ALL_STATUSES.map(s=>`<option value="${s}"${curVal===s?" selected":""}>${s}</option>`).join("");
+    if(curVal) statusEl.value=curVal;
+    warn.style.display="none";
+  }
+}
+document.getElementById("fCreative").addEventListener("change",()=>checkCreativeStatus("fCreative","fStatus","creativeWarn"));
+
+// ══════════════════════════════════════════════
+//  NEW / EDIT FORM
+// ══════════════════════════════════════════════
+let editingId=null;
+document.getElementById("openNewProject").addEventListener("click",()=>openEditModal(null));
+function cleanReasonBox(){const rb=document.getElementById("editReasonBox");if(rb){const pw=rb.closest("div[style]");if(pw)pw.remove();}}
+document.getElementById("closeModal").addEventListener("click",()=>{cleanReasonBox();document.getElementById("projectModal").classList.remove("open");});
+document.getElementById("cancelModal").addEventListener("click",()=>{cleanReasonBox();document.getElementById("projectModal").classList.remove("open");});
+document.getElementById("projectModal").addEventListener("click",function(e){if(e.target===this){cleanReasonBox();this.classList.remove("open");}});
+
+function openEditModal(id){
+  editingId=id; const p=id?projects.find(x=>x.id===id):null;
+  document.getElementById("modalTitle").textContent=p?"Edit Project":"Register New Project";
+  document.getElementById("dupWarn").style.display="none";
+  document.getElementById("creativeWarn").style.display="none";
+  populateBrandDD("fBrand"); populateActivityDD("fActivityType"); populateStatesDD("fState");
+  document.getElementById("fStatus").innerHTML=ALL_STATUSES.map(s=>`<option value="${s}">${s}</option>`).join("");
+  const sv=(fid,val)=>{const el=document.getElementById(fid);if(el)el.value=val||"";};
+  if(p){
+    document.getElementById("fBrand").value=p.brand||""; updateProductTypeDD(p.brand||"","fProductType","fSubBrand");
+    document.getElementById("fProductType").value=p.productType||""; updateSubBrandDD(p.brand||"",p.productType||"","fSubBrand");
+    document.getElementById("fSubBrand").value=p.subBrand||"";
+    document.getElementById("fActivityType").value=p.activityType||""; updateElementDD(p.activityType||"","fElementForm");
+    document.getElementById("fElementForm").value=p.element||"";
+    document.getElementById("fState").value=p.state||"";
+  }else{
+    document.getElementById("fBrand").value="";
+    document.getElementById("fProductType").innerHTML=`<option value=""></option>`;
+    document.getElementById("fSubBrand").innerHTML=`<option value=""></option>`;
+    document.getElementById("fActivityType").value="";
+    document.getElementById("fElementForm").innerHTML=`<option value=""></option>`;
+    document.getElementById("fState").value="";
+  }
+  sv("fDept",p?.dept); sv("fTown",p?.town); sv("fSegment",p?.segment); sv("fZone",p?.zone);
+  sv("fTMSPOC",p?.tmSpoc); sv("fBrandSPOC",p?.brandSpoc); sv("fVendor",p?.vendor);
+  sv("fAllocation",p?.allocation); sv("fUnitCost",p?.unitCost);
+  sv("fCreative",p?.creative||"Not Applicable"); sv("fExpected",p?.expected);
+  sv("fStatus",p?.status||"Planned/Not Started"); sv("fExecLink",p?.execLink); sv("fNote","");
+  calcBudget("fAllocation","fUnitCost","fBudget");
+  checkCreativeStatus("fCreative","fStatus","creativeWarn");
+  document.getElementById("projectModal").classList.add("open");
+}
+
+function calcBudget(aId,cId,bId){
+  const a=+document.getElementById(aId).value||0, c=+document.getElementById(cId).value||0;
+  document.getElementById(bId).value=a&&c?a*c:"";
+}
+document.getElementById("fBrand").addEventListener("change",()=>updateProductTypeDD(document.getElementById("fBrand").value,"fProductType","fSubBrand"));
+document.getElementById("fProductType").addEventListener("change",()=>updateSubBrandDD(document.getElementById("fBrand").value,document.getElementById("fProductType").value,"fSubBrand"));
+document.getElementById("fActivityType").addEventListener("change",()=>updateElementDD(document.getElementById("fActivityType").value,"fElementForm"));
+["fAllocation","fUnitCost"].forEach(id=>document.getElementById(id).addEventListener("input",()=>calcBudget("fAllocation","fUnitCost","fBudget")));
+
+function setupTypeahead(inputId,ddId){
+  const inp=document.getElementById(inputId), dd=document.getElementById(ddId);
+  if(!inp||!dd) return;
+  inp.addEventListener("input",function(){
+    const q=this.value.toLowerCase(), matches=SPOC_LIST.filter(s=>s.toLowerCase().includes(q));
+    if(!q||!matches.length){dd.classList.remove("open");return;}
+    dd.innerHTML=matches.map(s=>`<div class="ta-item">${s}</div>`).join("");
+    dd.classList.add("open");
+    dd.querySelectorAll(".ta-item").forEach(el=>el.addEventListener("click",()=>{inp.value=el.textContent;dd.classList.remove("open");}));
+  });
+  document.addEventListener("click",e=>{if(!dd.contains(e.target)&&e.target!==inp)dd.classList.remove("open");});
+}
+setupTypeahead("fTMSPOC","tmspocDD");
+setupTypeahead("fBrandSPOC","brandspocDD");
+setupTypeahead("bTMSPOC","btmspocDD");
+setupTypeahead("bBrandSPOC","bbrandspocDD");
+
+// Sensitive / low fields for edit tracking
+const SENSITIVE_FIELDS=[
+  {key:"tmSpoc",label:"TM SPOC"},{key:"brandSpoc",label:"Brand SPOC"},{key:"vendor",label:"Vendor"},
+  {key:"allocation",label:"Allocation",fmt:v=>(v||0)+" units"},{key:"unitCost",label:"Unit Cost",fmt:fmtINR},
+  {key:"expected",label:"Expected Completion",fmt:fmtDate},{key:"status",label:"Status"},{key:"creative",label:"Creative Status"},
+];
+const LOW_FIELDS=[
+  {key:"brand",label:"Brand"},{key:"productType",label:"Product Type"},{key:"subBrand",label:"Sub Brand"},
+  {key:"activityType",label:"Activity Type"},{key:"element",label:"Element"},
+  {key:"dept",label:"Department"},{key:"state",label:"State"},{key:"town",label:"Town"},
+  {key:"zone",label:"Zone"},{key:"segment",label:"Segment"},{key:"execLink",label:"Execution Link"},
+];
+function collectDiffs(old,p,fieldList){
+  return fieldList.reduce((acc,{key,label,fmt})=>{
+    const ov=old[key]??"",nv=p[key]??"";
+    if(String(ov)!==String(nv)){const f=fmt||(v=>v||"—");acc.push(`${label}: ${f(ov)||"—"} → ${f(nv)||"—"}`);}
+    return acc;
+  },[]);
+}
+
+document.getElementById("saveProject").addEventListener("click",()=>{
+  const g=id=>document.getElementById(id).value.trim();
+  if(!g("fBrand")||!g("fProductType")||!g("fActivityType")||!g("fElementForm")){alert("Brand, Product Type, Activity Type and Element are required.");return;}
+  if(g("fCreative")==="Approved"&&g("fStatus")==="Creative Pending"){alert("Creative is Approved — please change Status from Creative Pending.");return;}
+  const p={
+    id:editingId||nextId++,brand:g("fBrand"),productType:g("fProductType"),subBrand:g("fSubBrand"),
+    activityType:g("fActivityType"),element:g("fElementForm"),dept:g("fDept"),
+    state:g("fState"),town:g("fTown"),segment:g("fSegment"),zone:g("fZone"),
+    tmSpoc:g("fTMSPOC"),brandSpoc:g("fBrandSPOC"),vendor:g("fVendor"),
+    allocation:+g("fAllocation")||0,unitCost:+g("fUnitCost")||0,
+    creative:g("fCreative"),expected:g("fExpected"),status:g("fStatus")||"Planned/Not Started",execLink:g("fExecLink"),
+    startDate:editingId?projects.find(x=>x.id===editingId).startDate:today(),
+    history:editingId?[...projects.find(x=>x.id===editingId).history]:[]
+  };
+  if(editingId){
+    const old=projects.find(x=>x.id===editingId);
+    const sDiffs=collectDiffs(old,p,SENSITIVE_FIELDS);
+    const ob=old.allocation&&old.unitCost?old.allocation*old.unitCost:0;
+    const nb=p.allocation&&p.unitCost?p.allocation*p.unitCost:0;
+    if(ob!==nb) sDiffs.push(`Total Budget: ${fmtINR(ob)||"—"} → ${fmtINR(nb)||"—"}`);
+    if(sDiffs.length) p.history.push({date:today(),status:p.status,note:sDiffs.join("\n"),type:"sensitive"});
+    const lDiffs=collectDiffs(old,p,LOW_FIELDS);
+    if(lDiffs.length){
+      const reasonEl=document.getElementById("editReasonBox");
+      const reason=reasonEl?reasonEl.value.trim():"";
+      if(!reason){
+        if(!reasonEl){
+          const wrap=document.createElement("div");
+          wrap.style.cssText="margin-top:11px;padding:10px 12px;background:#0d1f36;border:1px solid var(--accent);border-radius:7px;";
+          wrap.innerHTML=`<div style="font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px">✏ Reason required for descriptor changes</div>
+            <div style="font-size:12px;color:var(--text2);margin-bottom:6px">Changed: <strong style="color:var(--text)">${lDiffs.map(d=>d.split(":")[0]).join(", ")}</strong></div>
+            <textarea id="editReasonBox" placeholder="e.g. typo fix, activity reassigned…" style="width:100%;background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px 9px;font-family:inherit;font-size:13px;resize:none;height:52px;outline:none"></textarea>
+            <div style="font-size:10px;color:var(--text3);margin-top:3px">Leave blank to skip logging.</div>`;
+          document.querySelector("#projectModal .modal-body").appendChild(wrap);
+          wrap.querySelector("textarea").focus();
+        }
+        document.getElementById("editReasonBox").scrollIntoView({behavior:"smooth",block:"center"});
+        return;
+      }
+      if(reason) p.history.push({date:today(),status:p.status,note:lDiffs.join("\n")+`\nReason: ${reason}`,type:"low"});
+    }
+  }else{
+    p.history.unshift({date:today(),status:p.status,note:`Project created. Brand: ${p.brand} · ${p.productType} · ${p.subBrand||"—"} | Activity: ${p.activityType} · ${p.element} | Status: ${p.status}${p.tmSpoc?" | TM SPOC: "+p.tmSpoc:""}`,type:"created"});
+  }
+  const note=g("fNote");
+  if(note) p.history.push({date:today(),status:p.status,note});
+  if(editingId){const idx=projects.findIndex(x=>x.id===editingId);projects[idx]=p;}
+  else projects.push(p);
+  cleanReasonBox();
+  document.getElementById("projectModal").classList.remove("open");
+  populateFilters(); onFilterChange(); renderAlerts();
+  showToast(editingId?"✓ Project updated":"✓ Project created successfully");
+});
+
+// ══════════════════════════════════════════════
+//  BULK ENTRY
+// ══════════════════════════════════════════════
+let bulkRowCount=0;
+
+document.getElementById("openBulkEntry").addEventListener("click",openBulkModal);
+document.getElementById("closeBulkModal").addEventListener("click",()=>document.getElementById("bulkModal").classList.remove("open"));
+document.getElementById("cancelBulkModal").addEventListener("click",()=>document.getElementById("bulkModal").classList.remove("open"));
+document.getElementById("bulkModal").addEventListener("click",function(e){if(e.target===this)this.classList.remove("open");});
+
+function openBulkModal(){
+  bulkRowCount=0;
+  document.getElementById("bulkLocTbody").innerHTML="";
+  document.getElementById("bulkDupWarnings").innerHTML="";
+  document.getElementById("bulkSummary").textContent="";
+  populateBrandDD("bBrand"); populateActivityDD("bActivityType");
+  document.getElementById("bBrand").addEventListener("change",()=>updateProductTypeDD(document.getElementById("bBrand").value,"bProductType","bSubBrand"));
+  document.getElementById("bProductType").addEventListener("change",()=>updateSubBrandDD(document.getElementById("bBrand").value,document.getElementById("bProductType").value,"bSubBrand"));
+  document.getElementById("bActivityType").addEventListener("change",()=>updateElementDD(document.getElementById("bActivityType").value,"bElementForm"));
+  addBulkRow(); addBulkRow(); addBulkRow(); // start with 3 rows
+  document.getElementById("bulkModal").classList.add("open");
+}
+
+function addBulkRow(){
+  bulkRowCount++;
+  const rowNum=bulkRowCount;
+  const tr=document.createElement("tr");
+  tr.dataset.row=rowNum;
+  const stateOpts=INDIAN_STATES.map(s=>`<option>${s}</option>`).join("");
+  const zoneOpts=ZONES.map(z=>`<option>${z}</option>`).join("");
+  tr.innerHTML=`
+    <td class="mono" style="color:var(--text3);padding:6px 8px">${rowNum}</td>
+    <td><select class="bl-state"><option value=""></option>${stateOpts}</select></td>
+    <td><input type="text" class="bl-town" placeholder="Town *"></td>
+    <td><select class="bl-zone"><option value=""></option>${zoneOpts}</select></td>
+    <td><select class="bl-segment"><option value=""></option><option>Urban</option><option>Semi-Urban</option><option>Rural</option></select></td>
+    <td><input type="text" class="bl-vendor" placeholder="Vendor"></td>
+    <td><input type="number" class="bl-alloc" placeholder="0" min="0" style="width:70px"></td>
+    <td><input type="number" class="bl-cost" placeholder="0" min="0" style="width:90px"></td>
+    <td><input type="number" class="bl-budget" readonly placeholder="Auto" style="width:90px"></td>
+    <td><input type="url" class="bl-link" placeholder="https://…" style="width:120px"></td>
+    <td><input type="text" class="bl-remarks" placeholder="Remarks…" style="width:140px"></td>
+    <td><button class="remove-row-btn" title="Remove row">✕</button></td>`;
+  tr.querySelector(".remove-row-btn").addEventListener("click",()=>{tr.remove();updateBulkSummary();});
+  tr.querySelector(".bl-alloc").addEventListener("input",()=>updateBulkRowBudget(tr));
+  tr.querySelector(".bl-cost").addEventListener("input",()=>updateBulkRowBudget(tr));
+  document.getElementById("bulkLocTbody").appendChild(tr);
+  updateBulkSummary();
+}
+function updateBulkRowBudget(tr){
+  const a=+tr.querySelector(".bl-alloc").value||0, c=+tr.querySelector(".bl-cost").value||0;
+  tr.querySelector(".bl-budget").value=a&&c?a*c:"";
+}
+function updateBulkSummary(){
+  const rows=document.querySelectorAll("#bulkLocTbody tr");
+  document.getElementById("bulkSummary").textContent=`${rows.length} location${rows.length!==1?"s":""}`;
+}
+document.getElementById("addBulkRow").addEventListener("click",addBulkRow);
+
+document.getElementById("saveBulkProjects").addEventListener("click",()=>{
+  const g=id=>document.getElementById(id).value.trim();
+  if(!g("bBrand")||!g("bProductType")||!g("bActivityType")||!g("bElementForm")){alert("Fill in all common required fields: Brand, Product Type, Activity Type, Element.");return;}
+  const rows=document.querySelectorAll("#bulkLocTbody tr");
+  if(!rows.length){alert("Add at least one location row.");return;}
+  const dupWarnings=[];
+  let saved=0;
+  rows.forEach(tr=>{
+    const town=tr.querySelector(".bl-town").value.trim();
+    if(!town){tr.classList.add("dup-row");return;}
+    const proj={
+      id:nextId++, brand:g("bBrand"), productType:g("bProductType"), subBrand:g("bSubBrand"),
+      activityType:g("bActivityType"), element:g("bElementForm"), dept:g("bDept"),
+      state:tr.querySelector(".bl-state").value, town,
+      segment:tr.querySelector(".bl-segment").value, zone:tr.querySelector(".bl-zone").value,
+      tmSpoc:g("bTMSPOC"), brandSpoc:g("bBrandSPOC"),
+      vendor:tr.querySelector(".bl-vendor").value,
+      allocation:+tr.querySelector(".bl-alloc").value||0,
+      unitCost:+tr.querySelector(".bl-cost").value||0,
+      creative:g("bCreative"), expected:g("bExpected"),
+      status:g("bStatus")||"Planned/Not Started",
+      execLink:tr.querySelector(".bl-link").value,
+      startDate:today(),
+      history:[]
+    };
+    const dk=dupKey(proj);
+    const existing=projects.find(p=>dupKey(p)===dk);
+    if(existing){dupWarnings.push(`Row ${tr.dataset.row} (${town}): duplicate of existing project — skipped.`);tr.classList.add("dup-row");return;}
+    const remarks=tr.querySelector(".bl-remarks").value.trim();
+    proj.history.push({date:today(),status:proj.status,note:`Project created via Bulk Entry. Brand: ${proj.brand} · ${proj.productType} | Activity: ${proj.activityType} · ${proj.element} | Location: ${proj.state||"—"} / ${town}${remarks?" | Remarks: "+remarks:""}`,type:"created"});
+    projects.push(proj); saved++;
+  });
+  if(dupWarnings.length){
+    document.getElementById("bulkDupWarnings").innerHTML=`<div style="background:#2e1212;border:1px solid var(--red);border-radius:7px;padding:10px 12px;color:var(--red);font-size:12px">`+dupWarnings.join("<br>")+`</div>`;
+  }
+  if(saved>0){
+    document.getElementById("bulkModal").classList.remove("open");
+    populateFilters(); onFilterChange(); renderAlerts();
+    showToast(`✓ ${saved} project${saved!==1?"s":""} created successfully`);
+  }
+});
+
+// ══════════════════════════════════════════════
+//  GROUP UPDATE
+// ══════════════════════════════════════════════
+document.getElementById("groupUpdateBtn").addEventListener("click",()=>{
+  const rows=filtered();
+  document.getElementById("groupUpdateCount").textContent=rows.length;
+  document.getElementById("groupUpdateList").innerHTML=rows.map(p=>`<div class="group-update-list-item"><strong>${prodLabel(p)}</strong> · ${p.activityType} · ${p.element} · ${p.state||"—"} / ${p.town||"—"} <span style="float:right">${getBadge(p.status)}</span></div>`).join("");
+  document.getElementById("groupUpdateNote").value="";
+  document.getElementById("groupUpdateStatus").value="";
+  document.getElementById("groupUpdateModal").classList.add("open");
+});
+document.getElementById("closeGroupModal").addEventListener("click",()=>document.getElementById("groupUpdateModal").classList.remove("open"));
+document.getElementById("cancelGroupModal").addEventListener("click",()=>document.getElementById("groupUpdateModal").classList.remove("open"));
+document.getElementById("groupUpdateModal").addEventListener("click",function(e){if(e.target===this)this.classList.remove("open");});
+document.getElementById("saveGroupUpdate").addEventListener("click",()=>{
+  const note=document.getElementById("groupUpdateNote").value.trim();
+  if(!note){document.getElementById("groupUpdateNote").style.borderColor="var(--red)";return;}
+  document.getElementById("groupUpdateNote").style.borderColor="";
+  const newStatus=document.getElementById("groupUpdateStatus").value;
+  const rows=filtered();
+  rows.forEach(p=>{
+    if(newStatus) p.status=newStatus;
+    p.history.push({date:today(),status:p.status,note:`[Group Update] ${note}`});
+  });
+  document.getElementById("groupUpdateModal").classList.remove("open");
+  onFilterChange(); renderAlerts();
+  showToast(`✓ Update posted to ${rows.length} projects`);
+});
+
+// ══════════════════════════════════════════════
+//  DASHBOARD
+// ══════════════════════════════════════════════
+function renderDashboard(){
+  const rows=filtered();
+  const total=rows.length, comp=rows.filter(p=>p.status==="Completed").length;
+  const blocked=rows.filter(p=>p.status==="Blocked–External").length;
+  const overdueCnt=rows.filter(isOverdue).length;
+  const budget=rows.reduce((s,p)=>s+(p.allocation&&p.unitCost?p.allocation*p.unitCost:0),0);
+
+  // Filter info bar
+  const f=getFilters();
+  const activeTags=[];
+  if(f.q) activeTags.push(`Search: "${f.q}"`);
+  if(f.br) activeTags.push(`Brand: ${f.br}`);
+  if(f.pt) activeTags.push(`Product: ${f.pt}`);
+  if(f.at) activeTags.push(`Activity: ${f.at}`);
+  if(f.el) activeTags.push(`Element: ${f.el}`);
+  if(f.tsp) activeTags.push(`TM SPOC: ${f.tsp}`);
+  if(f.zo) activeTags.push(`Zone: ${f.zo}`);
+  if(f.st) activeTags.push(`Status: ${f.st}`);
+  const dfi=document.getElementById("dashFilterInfo");
+  if(activeTags.length){
+    dfi.style.display="flex";
+    dfi.innerHTML=`<span class="dfi-label">Filtered view — showing ${total} of ${projects.length} projects:</span>`+activeTags.map(t=>`<span class="dfi-tag">${t}</span>`).join("")+`<span style="margin-left:auto;font-size:11px;color:var(--text3)">All charts reflect this filter</span>`;
+  }else{dfi.style.display="none";}
+
+  // Metric cards
+  document.getElementById("metricsRow").innerHTML=[
+    {label:"Projects",value:total,sub:total===projects.length?"all projects":`of ${projects.length} total`,color:"var(--accent)",fs:"",fe:""},
+    {label:"Completed",value:comp,sub:`${total?Math.round(comp/total*100):0}% rate`,color:"var(--green)",fs:"Completed",fe:""},
+    {label:"Overdue",value:overdueCnt,sub:"past expected date",color:"var(--orange)",fs:"",fe:"overdue"},
+    {label:"Blocked",value:blocked,sub:"need action",color:"var(--red)",fs:"Blocked–External",fe:""},
+    {label:"Total Budget",value:"₹"+(budget/100000).toFixed(1)+"L",sub:"filtered projects",color:"var(--yellow)",fs:"",fe:""},
+  ].map(m=>`<div class="metric-card" data-fs="${m.fs}" data-fe="${m.fe}">
+    <div class="mc-label">${m.label}</div><div class="mc-value" style="color:${m.color}">${m.value}</div>
+    <div class="mc-sub">${m.sub}</div>
+  </div>`).join("");
+  document.querySelectorAll(".metric-card").forEach(card=>card.addEventListener("click",()=>{
+    const fs=card.dataset.fs,fe=card.dataset.fe;
+    if(fs){document.getElementById("filterStatus").value=fs;document.getElementById("filterEdits").value="";}
+    if(fe){document.getElementById("filterEdits").value=fe;document.getElementById("filterStatus").value="";}
+    switchTab("projects"); onFilterChange();
+  }));
+
+  // Status bars
+  const sDefs=[["Completed","var(--green)"],["Execution in Progress","var(--accent)"],["Dispatched/In Transit","var(--navy)"],["GRN Pending","var(--teal)"],["Awaiting PO/Prov. Approval","var(--yellow)"],["Creative Pending","var(--purple)"],["Blocked–External","var(--red)"],["Planned/Not Started","var(--text3)"],["Postponed/Dropped","var(--orange)"],["In Process (Misc)","var(--pink)"]];
+  const maxC=Math.max(...sDefs.map(([s])=>rows.filter(p=>p.status===s).length),1);
+  document.getElementById("statusBars").innerHTML=sDefs.map(([s,c])=>{
+    const cnt=rows.filter(p=>p.status===s).length;
+    return`<div class="status-row" data-status="${s}">
+      <span class="sr-label" title="${s}">${s}</span>
+      <div class="sr-bar-bg"><div class="sr-bar" style="width:${Math.round(cnt/maxC*100)}%;background:${c}"></div></div>
+      <span class="sr-count">${cnt}</span>
+    </div>`;
+  }).join("");
+  document.querySelectorAll(".status-row").forEach(row=>row.addEventListener("click",()=>{
+    if(!rows.some(p=>p.status===row.dataset.status))return;
+    document.getElementById("filterStatus").value=row.dataset.status;
+    document.getElementById("filterEdits").value="";
+    switchTab("projects"); onFilterChange();
+  }));
+
+  // Trend
+  const weeks={};
+  rows.forEach(p=>{if(!p.expected)return;const d=new Date(p.expected),ws=new Date(d);ws.setDate(d.getDate()-d.getDay());const key=ws.toISOString().slice(0,10);weeks[key]=(weeks[key]||0)+1;});
+  const sorted=Object.entries(weeks).sort((a,b)=>a[0]<b[0]?-1:1);
+  const svg=document.getElementById("trendSvg");
+  if(sorted.length<2){svg.innerHTML=`<text x="250" y="79" fill="var(--text3)" text-anchor="middle" font-size="12" font-family="DM Sans">Not enough data</text>`;}
+  else{
+    const vals=sorted.map(([,c])=>c),maxV=Math.max(...vals);
+    const W=500,H=148,px=30,py=15;
+    const xS=(W-px*2)/(sorted.length-1),yF=v=>py+(H-py*2)*(1-v/maxV);
+    const pts=sorted.map(([,c],i)=>[px+i*xS,yF(c)]);
+    const area=`M ${pts[0]}`+pts.slice(1).map(p=>`L ${p}`).join(" ")+` L ${pts[pts.length-1][0]},${H-py} L ${px},${H-py} Z`;
+    const line=`M ${pts[0]}`+pts.slice(1).map(p=>`L ${p}`).join(" ");
+    const dots=sorted.map(([w,c],i)=>`<circle cx="${pts[i][0]}" cy="${pts[i][1]}" r="3.5" fill="var(--accent)" stroke="var(--bg)" stroke-width="2"><title>${fmtDate(w)}: ${c}</title></circle>`).join("");
+    const li=[0,...(sorted.length>4?[Math.floor(sorted.length/3),Math.floor(2*sorted.length/3)]:[]),sorted.length-1];
+    const lbls=[...new Set(li)].map(i=>{const d=new Date(sorted[i][0]);return`<text x="${pts[i][0]}" y="${H}" fill="var(--text3)" text-anchor="middle" font-size="8.5" font-family="DM Sans">${MONTHS[d.getMonth()]} ${d.getDate()}</text>`;}).join("");
+    svg.innerHTML=`<defs><linearGradient id="tg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--accent)" stop-opacity=".3"/><stop offset="100%" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs><path d="${area}" fill="url(#tg)"/><path d="${line}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"/>${dots}${lbls}`;
+  }
+
+  // Audit feed — filtered
+  const allEdits=[];
+  rows.forEach(p=>p.history.forEach(h=>{if(h.type==="sensitive"||h.type==="low")allEdits.push({proj:p,entry:h});}));
+  allEdits.sort((a,b)=>b.entry.date<a.entry.date?-1:b.entry.date>a.entry.date?1:0);
+  const feedEl=document.getElementById("auditFeed");
+  if(!allEdits.length){feedEl.innerHTML=`<div style="color:var(--text3);font-size:13px;padding:9px 0">No field edits in current filtered view.</div>`;return;}
+  feedEl.innerHTML=`<table style="width:100%;border-collapse:collapse">
+    <thead><tr style="border-bottom:1px solid var(--border)">
+      <th style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;padding:5px 7px;text-align:left">Date</th>
+      <th style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;padding:5px 7px;text-align:left">Project</th>
+      <th style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;padding:5px 7px;text-align:left">Type</th>
+      <th style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;padding:5px 7px;text-align:left">Fields Changed</th>
+    </tr></thead><tbody>
+    ${allEdits.slice(0,20).map(({proj,entry})=>{
+      const isSens=entry.type==="sensitive";
+      const pill=isSens?`<span style="background:#2e1212;color:var(--red);border-radius:3px;padding:1px 5px;font-size:10px;font-weight:600">⚠ SENSITIVE</span>`:`<span style="background:#2e1e10;color:var(--orange);border-radius:3px;padding:1px 5px;font-size:10px;font-weight:600">✎ FIELD</span>`;
+      const fl=entry.note.split("\n").filter(l=>!l.startsWith("Reason:"));
+      const rl=entry.note.split("\n").find(l=>l.startsWith("Reason:"));
+      const fH=fl.map(l=>{const ci=l.indexOf(":");return`<div style="font-size:11px"><span style="color:var(--text3);min-width:100px;display:inline-block">${l.substring(0,ci).trim()}</span><span style="color:var(--text)">${l.substring(ci+1).trim()}</span></div>`;}).join("")+(rl?`<div style="font-size:10px;color:var(--text2);margin-top:2px">💬 ${rl.replace("Reason:","").trim()}</div>`:"");
+      return`<tr data-id="${proj.id}" style="border-bottom:1px solid var(--border);cursor:pointer" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'">
+        <td style="padding:7px 7px;font-size:10px;color:var(--text2);font-family:'DM Mono',monospace;white-space:nowrap;vertical-align:top">${fmtDate(entry.date)}</td>
+        <td style="padding:7px 7px;vertical-align:top"><div style="font-size:11px;font-weight:600;color:var(--text)">${prodLabel(proj)}</div><div style="font-size:10px;color:var(--text3)">${proj.activityType} · ${proj.element} · ${proj.town}</div></td>
+        <td style="padding:7px 7px;vertical-align:top">${pill}</td>
+        <td style="padding:7px 7px;vertical-align:top">${fH}</td>
+      </tr>`;
+    }).join("")}
+    </tbody></table>${allEdits.length>20?`<div style="font-size:10px;color:var(--text3);padding:5px 7px">${allEdits.length-20} older edits not shown.</div>`:""}`;
+  feedEl.querySelectorAll("tr[data-id]").forEach(row=>row.addEventListener("click",()=>{switchTab("projects");openDetail(+row.dataset.id);}));
+}
+
+// ══════════════════════════════════════════════
+//  ALERTS
+// ══════════════════════════════════════════════
+let activeAlertSection=null;
+const SECTION_MAP={blocked:"alertSectionBlocked",overdue:"alertSectionOverdue",atrisk:"alertSectionAtRisk",nolink:"alertSectionNoLink"};
+
+function renderAlerts(){
+  const blocked=projects.filter(p=>p.status==="Blocked–External");
+  const overdue=projects.filter(isOverdue);
+  const atRisk=projects.filter(p=>{if(p.status==="Completed"||p.status==="Postponed/Dropped"||isOverdue(p))return false;const lu=latestUpdate(p);return lu?daysDiff(lu.date,today())>=14:true;});
+  const noLink=projects.filter(isMissingLink);
+  const alertDefs=[
+    {id:"blocked",label:"Blocked",icon:"🚫",count:blocked.length,items:blocked,color:"#2e1212",textColor:"var(--red)",cls:"blocked",filterStatus:"Blocked–External",filterEdits:""},
+    {id:"overdue",label:"Overdue",icon:"🔴",count:overdue.length,items:overdue,color:"#2e1e10",textColor:"var(--orange)",cls:"overdue",filterStatus:"",filterEdits:"overdue"},
+    {id:"atrisk",label:"At-Risk",icon:"⚠️",count:atRisk.length,items:atRisk,color:"#2e2510",textColor:"var(--yellow)",cls:"atrisk",filterStatus:"",filterEdits:""},
+    {id:"nolink",label:"Missing Link",icon:"🔗",count:noLink.length,items:noLink,color:"#1e1235",textColor:"var(--purple)",cls:"nolink",filterStatus:"",filterEdits:"nolink"},
+  ];
+  document.getElementById("alertMetricsRow").innerHTML=alertDefs.map(a=>`
+    <div class="alert-metric-card${activeAlertSection===a.id?" active":""}" data-section="${a.id}"
+      style="background:${a.color};${activeAlertSection===a.id?"box-shadow:0 0 0 2px "+a.textColor:""}">
+      <div class="amc-icon">${a.icon}</div>
+      <div class="amc-count" style="color:${a.textColor}">${a.count}</div>
+      <div class="amc-label" style="color:${a.textColor}">${a.label}</div>
+      <div class="amc-sub">${a.count===0?"All clear ✓":a.count===1?"1 project needs attention":`${a.count} need attention`}</div>
+      <div class="amc-hint">${a.count>0?"Click to expand":""}
+    </div>`).join("");
+  alertDefs.forEach(a=>{
+    const card=document.querySelector(`.alert-metric-card[data-section="${a.id}"]`);
+    if(!card) return;
+    card.addEventListener("click",()=>{
+      if(activeAlertSection===a.id){activeAlertSection=null;document.querySelectorAll(".alert-section").forEach(s=>s.classList.remove("visible"));renderAlerts();return;}
+      activeAlertSection=a.id;
+      document.querySelectorAll(".alert-section").forEach(s=>s.classList.remove("visible"));
+      const secEl=document.getElementById(SECTION_MAP[a.id]);
+      if(secEl){renderAlertSection(secEl,a);secEl.classList.add("visible");setTimeout(()=>secEl.scrollIntoView({behavior:"smooth",block:"nearest"}),50);}
+      renderAlerts();
+    });
+  });
+}
+
+function renderAlertSection(secEl,a){
+  if(!a.items.length){secEl.innerHTML=`<div class="no-alerts">${a.icon} No ${a.label.toLowerCase()} projects right now</div>`;return;}
+  secEl.innerHTML=`<div class="alert-section-header">
+    <h3 style="color:${a.textColor}">${a.icon} ${a.label} (${a.items.length})</h3>
+    <button class="jump-btn" data-fs="${a.filterStatus}" data-fe="${a.filterEdits}">↗ View in Projects</button>
+    <button class="close-section">✕ Close</button>
+  </div>
+  <div class="alert-cards-grid">${a.items.map(p=>{
+    const budget=p.allocation&&p.unitCost?p.allocation*p.unitCost:0;
+    const lu=latestUpdate(p); const age=p.startDate?daysDiff(p.startDate,today()):"—";
+    return`<div class="alert-card ${a.cls}" data-id="${p.id}">
+      <h4>${prodLabel(p)}</h4>
+      <div style="margin-bottom:4px">${getBadge(p.status)}</div>
+      <div class="ac-meta">
+        <span class="ac-m">Activity: <strong>${p.activityType||"—"} · ${p.element||"—"}</strong></span>
+        <span class="ac-m">TM SPOC: <strong>${p.tmSpoc||"—"}</strong></span>
+        <span class="ac-m">Zone: <strong>${p.zone||"—"}</strong></span>
+        <span class="ac-m">Expected: <strong style="${isOverdue(p)?"color:var(--red)":""}">${fmtDate(p.expected)}</strong></span>
+        <span class="ac-m">Age: <strong>${age}d</strong></span>
+        ${budget?`<span class="ac-m">Budget: <strong>${fmtINR(budget)}</strong></span>`:""}
+        ${lu?`<span class="ac-m" style="flex:1 1 100%">Last: <strong>${lu.note.split("\n")[0].substring(0,70)}</strong></span>`:`<span class="ac-m" style="color:var(--red)">⚠ No updates</span>`}
+      </div>
+    </div>`;
+  }).join("")}</div>`;
+  secEl.querySelector(".close-section").addEventListener("click",()=>{activeAlertSection=null;secEl.classList.remove("visible");renderAlerts();});
+  secEl.querySelector(".jump-btn").addEventListener("click",function(){
+    document.getElementById("filterStatus").value=this.dataset.fs||"";
+    document.getElementById("filterEdits").value=this.dataset.fe||"";
+    switchTab("projects"); onFilterChange();
+  });
+  secEl.querySelectorAll(".alert-card[data-id]").forEach(c=>c.addEventListener("click",()=>{switchTab("projects");openDetail(+c.dataset.id);}));
+}
+
+// ══════════════════════════════════════════════
+//  EXPORT
+// ══════════════════════════════════════════════
+document.getElementById("exportBtn").addEventListener("click",()=>{
+  const rows=filtered();
+  if(!rows.length){alert("No projects to export.");return;}
+  const data=rows.map(p=>{
+    const budget=p.allocation&&p.unitCost?p.allocation*p.unitCost:0;
+    const age=p.startDate?daysDiff(p.startDate,today()):"";
+    const lu=latestUpdate(p);
+    const hist=p.history.map(h=>`[${h.date}] ${h.status}: ${h.note.split("\n")[0]}`).join(" | ");
+    return{"Brand":p.brand||"","Product Type":p.productType||"","Sub Brand":p.subBrand||"","Activity Type":p.activityType||"","Element":p.element||"","Department":p.dept||"","State":p.state||"","Town":p.town||"","Segment":p.segment||"","Zone":p.zone||"","TM SPOC":p.tmSpoc||"","Brand SPOC":p.brandSpoc||"","Vendor":p.vendor||"","Allocation":p.allocation||0,"Unit Cost (₹)":p.unitCost||0,"Total Budget (₹)":budget,"Creative Status":p.creative||"","Status":p.status||"","Start Date":p.startDate||"","Age (Days)":age,"Expected Completion":p.expected||"","Execution Link":p.execLink||"","Overdue":isOverdue(p)?"Yes":"No","Link Missing":isMissingLink(p)?"Yes":"No","Latest Update Date":lu?lu.date:"","Latest Update":lu?lu.note.split("\n")[0]:"","Full History":hist};
+  });
+  const ws=XLSX.utils.json_to_sheet(data);
+  ws['!cols']=[{wch:12},{wch:18},{wch:16},{wch:18},{wch:22},{wch:12},{wch:14},{wch:12},{wch:10},{wch:8},{wch:15},{wch:15},{wch:16},{wch:8},{wch:10},{wch:13},{wch:13},{wch:22},{wch:11},{wch:8},{wch:16},{wch:28},{wch:7},{wch:7},{wch:12},{wch:28},{wch:50}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,"Projects");
+  XLSX.writeFile(wb,`AWL_TM_${today()}.xlsx`);
+});
+
+// ══════════════════════════════════════════════
+//  TABS — filter bar visibility
+// ══════════════════════════════════════════════
+function switchTab(name){
+  document.querySelectorAll(".tab-btn").forEach(b=>b.classList.toggle("active",b.dataset.tab===name));
+  document.querySelectorAll(".tab-pane").forEach(p=>p.classList.toggle("active",p.id==="tab-"+name));
+  // Show filter bar on Projects and Dashboard; hide on Alerts
+  document.getElementById("sharedFilterBar").style.display=name==="alerts"?"none":"flex";
+  if(name==="dashboard") renderDashboard();
+  if(name==="alerts")    renderAlerts();
+}
+document.querySelectorAll(".tab-btn").forEach(b=>b.addEventListener("click",()=>switchTab(b.dataset.tab)));
+
+// ══════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════
+populateFilters();
+onFilterChange();
+renderDashboard();
+renderAlerts();
+</script>
+</body>
+</html>
 
